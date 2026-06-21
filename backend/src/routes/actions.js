@@ -180,4 +180,24 @@ router.post(
   asyncHandler(action.adminMergeResourceCategory)
 );
 
+router.post(
+  '/admin/assignments',
+  auth,
+  requireAdmin,
+  [
+    body('title').isString().trim().isLength({ min: 1, max: 128 }),
+    body('deadline').isISO8601(),
+    body('description').optional().isString().trim(),
+    body('resourceIds').optional().isArray(),
+    body('targetScope').optional().isObject(),
+  ],
+  validate,
+  asyncHandler(action.adminCreateAssignment)
+);
+
+router.delete('/admin/assignments/:assignmentId', auth, requireAdmin, asyncHandler(action.adminDeleteAssignment));
+
+router.post('/assignments/:assignmentId/start', auth, asyncHandler(action.studentStartAssignment));
+router.post('/assignments/:assignmentId/submit', auth, asyncHandler(action.studentSubmitAssignment));
+
 module.exports = router;

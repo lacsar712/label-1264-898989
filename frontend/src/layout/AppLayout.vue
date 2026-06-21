@@ -12,6 +12,7 @@ import {
   School,
   SwitchButton,
   Compass,
+  Document,
 } from '@element-plus/icons-vue'
 
 import ErrorBoundary from '../components/ErrorBoundary.vue'
@@ -59,6 +60,10 @@ function logout() {
             <el-icon><Compass /></el-icon>
             <span>能力图谱</span>
           </el-menu-item>
+          <el-menu-item index="/assignments">
+            <el-icon><Document /></el-icon>
+            <span>我的作业</span>
+          </el-menu-item>
 
           <el-sub-menu v-if="isAdmin" index="/admin">
             <template #title>
@@ -76,6 +81,10 @@ function logout() {
             <el-menu-item index="/admin/system">
               <el-icon><Setting /></el-icon>
               <span>系统配置</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/assignments">
+              <el-icon><Document /></el-icon>
+              <span>作业管理</span>
             </el-menu-item>
           </el-sub-menu>
         </el-menu>

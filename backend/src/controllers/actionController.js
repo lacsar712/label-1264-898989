@@ -10,6 +10,8 @@ const {
   SystemLog,
   UserBehavior,
   FavoriteFolder,
+  Assignment,
+  AssignmentSubmission,
 } =
   require('../models');
 
@@ -535,6 +537,94 @@ async function adminMergeResourceCategory(req, res) {
   return res.json({ ok: true });
 }
 
+async function adminCreateAssignment(req, res) {
+  const { title, description, deadline, resourceIds, targetScope } = req.body;
+  if (!title || !deadline) {
+    return res.status(400).json({ ok: false, error: { code: 'INVALID_PARAM', message: '标题和截止日期为必填' } });
+  }
+
+  const assignment = await Assignment.create({
+    title: String(title).trim(),
+    description: String(description || '').trim(),
+    deadline: new Date(deadline),
+    resourceIds: Array.isArray(resourceIds) ? resourceIds : [],
+    targetScope: targetScope || {},
+    createdBy: req.user.id,
+  });
+
+  const scope = targetScope || {};
+  let targetUsers = [];
+
+  if (scope.type === 'class' && Array.isArray(scope.values) && scope.values.length > 0) {
+    targetUsers = await User.findAll({ where: { role: 'student', active: true, stage: { [require('sequelize').Op.in]: scope.values } } });
+  } else if (scope.type === 'tag' && Array.isArray(scope.values) && scope.values.length > 0) {
+    const userTags = await UserTag.findAll({ where: { category: { [require('sequelize').Op.in]: scope.values } } });
+    const userIds = [...new Set(userTags.map((t) => t.userId))];
+    if (userIds.length) {
+      targetUsers = await User.findAll({ where: { id: { [require('sequelize').Op.in]: userIds }, role: 'student', active: true } });
+    }
+  } else {
+    targetUsers = await User.findAll({ where: { role: 'student', active: true } });
+  }
+
+  if (targetUsers.length) {
+    const submissions = targetUsers.map((u) => ({
+      assignmentId: assignment.id,
+      userId: u.id,
+      status: '待完成',
+    }));
+    await AssignmentSubmission.bulkCreate(submissions);
+  }
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '作业操作',
+    content: `创建作业#${assignment.id} "${assignment.title}"，派发给${targetUsers.length}名学生`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true, data: { id: assignment.id, assignedCount: targetUsers.length } });
+}
+
+async function adminDeleteAssignment(req, res) {
+  const { assignmentId } = req.params;
+  const assignment = await Assignment.findByPk(assignmentId);
+  if (!assignment) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '作业不存在' } });
+  await AssignmentSubmission.destroy({ where: { assignmentId: assignment.id } });
+  await assignment.destroy();
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '作业操作',
+    content: `删除作业#${assignment.id} "${assignment.title}"`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function studentStartAssignment(req, res) {
+  const userId = req.user.id;
+  const { assignmentId } = req.params;
+  const sub = await AssignmentSubmission.findOne({ where: { assignmentId, userId } });
+  if (!sub) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '作业记录不存在' } });
+  if (sub.status === '已提交') return res.status(400).json({ ok: false, error: { code: 'INVALID_OPERATION', message: '作业已提交' } });
+  await sub.update({ status: '进行中' });
+  return res.json({ ok: true });
+}
+
+async function studentSubmitAssignment(req, res) {
+  const userId = req.user.id;
+  const { assignmentId } = req.params;
+  const sub = await AssignmentSubmission.findOne({ where: { assignmentId, userId } });
+  if (!sub) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '作业记录不存在' } });
+  if (sub.status === '已提交') return res.status(400).json({ ok: false, error: { code: 'INVALID_OPERATION', message: '作业已提交' } });
+  await sub.update({ status: '已提交', submittedAt: new Date() });
+  return res.json({ ok: true });
+}
+
 module.exports = {
   favorite,
   learn,
@@ -561,4 +651,8 @@ module.exports = {
   adminCreateResourceCategory,
   adminUpdateResourceCategory,
   adminMergeResourceCategory,
+  adminCreateAssignment,
+  adminDeleteAssignment,
+  studentStartAssignment,
+  studentSubmitAssignment,
 };

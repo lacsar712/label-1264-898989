@@ -11,9 +11,11 @@ router.get('/resources', auth, asyncHandler(page.resources));
 router.get('/recommendation-analysis', auth, asyncHandler(page.recommendationAnalysis));
 router.get('/progress', auth, asyncHandler(page.progress));
 router.get('/ability-map', auth, asyncHandler(page.abilityMap));
+router.get('/assignments', auth, asyncHandler(page.studentAssignments));
 
 router.get('/admin/users', auth, requireAdmin, asyncHandler(page.userAdmin));
 router.get('/admin/resources', auth, requireAdmin, asyncHandler(page.resourceAdmin));
 router.get('/admin/system', auth, requireAdmin, asyncHandler(page.systemConfig));
+router.get('/admin/assignments', auth, requireAdmin, asyncHandler(page.adminAssignments));
 
 module.exports = router;

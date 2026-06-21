@@ -6,6 +6,7 @@ const { getAbilityMapData } = require('../services/pages/abilityMapService');
 const { getAdminUsersData } = require('../services/pages/adminUsersService');
 const { getAdminResourcesData } = require('../services/pages/adminResourcesService');
 const { getAdminSystemData } = require('../services/pages/adminSystemService');
+const { getStudentAssignmentData, getAdminAssignmentData } = require('../services/pages/assignmentService');
 
 async function home(req, res) {
   res.json({ ok: true, data: await getHomeData(req.user.id) });
@@ -39,4 +40,12 @@ async function systemConfig(req, res) {
   res.json({ ok: true, data: await getAdminSystemData() });
 }
 
-module.exports = { home, resources, recommendationAnalysis, progress, abilityMap, userAdmin, resourceAdmin, systemConfig };
+async function studentAssignments(req, res) {
+  res.json({ ok: true, data: await getStudentAssignmentData(req.user.id) });
+}
+
+async function adminAssignments(req, res) {
+  res.json({ ok: true, data: await getAdminAssignmentData() });
+}
+
+module.exports = { home, resources, recommendationAnalysis, progress, abilityMap, userAdmin, resourceAdmin, systemConfig, studentAssignments, adminAssignments };

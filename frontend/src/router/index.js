@@ -12,6 +12,8 @@ import AbilityMapPage from '../pages/AbilityMapPage.vue'
 import AdminUsersPage from '../pages/admin/AdminUsersPage.vue'
 import AdminResourcesPage from '../pages/admin/AdminResourcesPage.vue'
 import AdminSystemPage from '../pages/admin/AdminSystemPage.vue'
+import AssignmentPage from '../pages/AssignmentPage.vue'
+import AdminAssignmentsPage from '../pages/admin/AdminAssignmentsPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,9 +29,11 @@ const router = createRouter({
         { path: 'recommendation-analysis', component: RecommendationAnalysisPage },
         { path: 'progress', component: ProgressPage },
         { path: 'ability-map', component: AbilityMapPage },
+        { path: 'assignments', component: AssignmentPage },
         { path: 'admin/users', component: AdminUsersPage },
         { path: 'admin/resources', component: AdminResourcesPage },
         { path: 'admin/system', component: AdminSystemPage },
+        { path: 'admin/assignments', component: AdminAssignmentsPage },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/home' },

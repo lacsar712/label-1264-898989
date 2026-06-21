@@ -20,6 +20,8 @@ const SystemParam = require('./systemParam')(sequelize, DataTypes);
 const SystemLog = require('./systemLog')(sequelize, DataTypes);
 const FocusSession = require('./focusSession')(sequelize, DataTypes);
 const FocusPreset = require('./focusPreset')(sequelize, DataTypes);
+const Assignment = require('./assignment')(sequelize, DataTypes);
+const AssignmentSubmission = require('./assignmentSubmission')(sequelize, DataTypes);
 
 User.hasMany(UserTag, { foreignKey: 'userId', as: 'tags' });
 UserTag.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -82,6 +84,15 @@ FocusSession.belongsTo(Resource, { foreignKey: 'resourceId', as: 'resource' });
 FocusPreset.hasMany(FocusSession, { foreignKey: 'presetId', as: 'sessions' });
 FocusSession.belongsTo(FocusPreset, { foreignKey: 'presetId', as: 'preset' });
 
+User.hasMany(Assignment, { foreignKey: 'createdBy', as: 'createdAssignments' });
+Assignment.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+Assignment.hasMany(AssignmentSubmission, { foreignKey: 'assignmentId', as: 'submissions' });
+AssignmentSubmission.belongsTo(Assignment, { foreignKey: 'assignmentId', as: 'assignment' });
+
+User.hasMany(AssignmentSubmission, { foreignKey: 'userId', as: 'assignmentSubmissions' });
+AssignmentSubmission.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
@@ -102,4 +113,6 @@ module.exports = {
   SystemLog,
   FocusSession,
   FocusPreset,
+  Assignment,
+  AssignmentSubmission,
 };
