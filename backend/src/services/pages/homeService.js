@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 
-const { User, UserTag, RecommendationBatch, Recommendation, Resource, LearningDaily } = require('../../models');
+const { User, UserTag, RecommendationBatch, Recommendation, Resource, LearningDaily, FocusSession } = require('../../models');
 
 const PROFILE_CATEGORY_ORDER = ['学习阶段', '学科偏好', '学习风格', '能力标签', '行为标签'];
 
@@ -136,6 +136,32 @@ async function getHomeData(userId) {
     avgMatchScore: summaryByDate[date].n ? summaryByDate[date].avgMatchScoreSum / summaryByDate[date].n : 0,
   }));
 
+  const focusSessions7 = await FocusSession.findAll({
+    where: { userId, status: '已完成', startedAt: { [Op.gte]: since7 } },
+  });
+
+  let pomodoroCount7 = 0;
+  let focusSeconds7 = 0;
+  const pomodoroByDate = dateRange7.reduce((acc, date) => {
+    acc[date] = { date, count: 0, minutes: 0 };
+    return acc;
+  }, {});
+
+  for (const s of focusSessions7) {
+    const date = toDateOnly(s.startedAt);
+    if (!pomodoroByDate[date]) continue;
+    pomodoroByDate[date].count += 1;
+    pomodoroByDate[date].minutes += Math.round(safeNumber(s.actualFocusSeconds) / 60);
+    pomodoroCount7 += 1;
+    focusSeconds7 += safeNumber(s.actualFocusSeconds);
+  }
+
+  const pomodoroDaily = dateRange7.map((date) => ({
+    date,
+    count: pomodoroByDate[date].count,
+    focusMinutes: pomodoroByDate[date].minutes,
+  }));
+
   return {
     user: {
       name: user?.name || '未命名用户',
@@ -151,8 +177,11 @@ async function getHomeData(userId) {
       totalStudyMinutes7d: totals.studyMinutes,
       completedResources7d: totals.completedCount,
       avgRecommendMatch7d: totals.avgMatchScoreN ? totals.avgMatchScoreSum / totals.avgMatchScoreN : 0,
+      pomodoroCount7d: pomodoroCount7,
+      focusMinutes7d: Math.round(focusSeconds7 / 60),
     },
     weeklySummaryTable,
+    pomodoroDaily,
   };
 }
 

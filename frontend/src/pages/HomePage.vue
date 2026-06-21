@@ -16,6 +16,7 @@ import {
 } from 'element-plus'
 
 import EChart from '../components/EChart.vue'
+import PomodoroTimer from '../components/PomodoroTimer.vue'
 import { api } from '../lib/api'
 import { usePageData } from '../lib/usePageData'
 
@@ -179,15 +180,10 @@ async function confirmFavorite() {
     </ElRow>
 
     <ElRow :gutter="16" style="margin-top: 16px">
-      <ElCol :xs="24" :lg="14">
-        <ElCard style="border-radius: 14px">
-          <div style="font-weight: 700">个性化推荐趋势（近7天）</div>
-          <ElSkeleton :loading="loading" animated>
-            <EChart :option="trendOption" :height="320" />
-          </ElSkeleton>
-        </ElCard>
+      <ElCol :xs="24" :lg="8">
+        <PomodoroTimer @session-end="refresh" @session-start="refresh" />
       </ElCol>
-      <ElCol :xs="24" :lg="10">
+      <ElCol :xs="24" :lg="16">
         <ElCard style="border-radius: 14px; height: 100%">
           <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px">
             <div style="font-weight: 700">学习数据速览</div>
@@ -195,7 +191,7 @@ async function confirmFavorite() {
           </div>
           <ElSkeleton :loading="loading" animated>
             <ElRow :gutter="12">
-              <ElCol :span="8">
+              <ElCol :span="6">
                 <ElCard shadow="never" style="border-radius: 12px">
                   <div style="font-size: 12px; color: #64748b">总学时(7天)</div>
                   <div style="font-size: 18px; font-weight: 800">
@@ -203,17 +199,25 @@ async function confirmFavorite() {
                   </div>
                 </ElCard>
               </ElCol>
-              <ElCol :span="8">
+              <ElCol :span="6">
                 <ElCard shadow="never" style="border-radius: 12px">
                   <div style="font-size: 12px; color: #64748b">完成资源(7天)</div>
                   <div style="font-size: 18px; font-weight: 800">{{ data?.quickStats?.completedResources7d || 0 }}</div>
                 </ElCard>
               </ElCol>
-              <ElCol :span="8">
+              <ElCol :span="6">
                 <ElCard shadow="never" style="border-radius: 12px">
                   <div style="font-size: 12px; color: #64748b">推荐匹配(7天)</div>
                   <div style="font-size: 18px; font-weight: 800">
                     {{ Math.round((data?.quickStats?.avgRecommendMatch7d || 0) * 100) }}%
+                  </div>
+                </ElCard>
+              </ElCol>
+              <ElCol :span="6">
+                <ElCard shadow="never" style="border-radius: 12px; background: #fef3c7">
+                  <div style="font-size: 12px; color: #92400e">🍅 番茄(7天)</div>
+                  <div style="font-size: 18px; font-weight: 800; color: #78350f">
+                    {{ data?.quickStats?.pomodoroCount7d || 0 }}个
                   </div>
                 </ElCard>
               </ElCol>

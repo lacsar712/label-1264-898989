@@ -18,6 +18,8 @@ const UserBehavior = require('./userBehavior')(sequelize, DataTypes);
 const RecommendationRule = require('./recommendationRule')(sequelize, DataTypes);
 const SystemParam = require('./systemParam')(sequelize, DataTypes);
 const SystemLog = require('./systemLog')(sequelize, DataTypes);
+const FocusSession = require('./focusSession')(sequelize, DataTypes);
+const FocusPreset = require('./focusPreset')(sequelize, DataTypes);
 
 User.hasMany(UserTag, { foreignKey: 'userId', as: 'tags' });
 UserTag.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -68,6 +70,18 @@ UserBehavior.belongsTo(Resource, { foreignKey: 'resourceId', as: 'resource' });
 User.hasMany(SystemLog, { foreignKey: 'actorUserId', as: 'logs' });
 SystemLog.belongsTo(User, { foreignKey: 'actorUserId', as: 'actor' });
 
+User.hasMany(FocusSession, { foreignKey: 'userId', as: 'focusSessions' });
+FocusSession.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(FocusPreset, { foreignKey: 'userId', as: 'focusPresets' });
+FocusPreset.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Resource.hasMany(FocusSession, { foreignKey: 'resourceId', as: 'focusSessions' });
+FocusSession.belongsTo(Resource, { foreignKey: 'resourceId', as: 'resource' });
+
+FocusPreset.hasMany(FocusSession, { foreignKey: 'presetId', as: 'sessions' });
+FocusSession.belongsTo(FocusPreset, { foreignKey: 'presetId', as: 'preset' });
+
 module.exports = {
   sequelize,
   User,
@@ -86,4 +100,6 @@ module.exports = {
   RecommendationRule,
   SystemParam,
   SystemLog,
+  FocusSession,
+  FocusPreset,
 };

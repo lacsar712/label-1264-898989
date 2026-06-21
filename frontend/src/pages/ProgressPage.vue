@@ -67,6 +67,28 @@ const funnelOption = computed(() => ({
     },
   ],
 }))
+
+const pomodoroBarOption = computed(() => ({
+  tooltip: { trigger: 'axis' },
+  grid: { top: 24, left: 36, right: 12, bottom: 28, containLabel: true },
+  xAxis: {
+    type: 'category',
+    data: (data.value?.pomodoroStats?.daily || []).map((x) => x.date.slice(5)),
+    axisLabel: { fontSize: 11 },
+  },
+  yAxis: [
+    { type: 'value', name: '番茄数', min: 0, axisLabel: { fontSize: 11 } },
+  ],
+  series: [
+    {
+      name: '番茄个数',
+      type: 'bar',
+      barWidth: 20,
+      itemStyle: { borderRadius: [6, 6, 0, 0], color: '#f59e0b' },
+      data: (data.value?.pomodoroStats?.daily || []).map((x) => x.count),
+    },
+  ],
+}))
 </script>
 
 <template>
@@ -130,6 +152,77 @@ const funnelOption = computed(() => ({
           <div style="font-weight: 700">错题复盘（漏斗）</div>
           <ElSkeleton :loading="loading" animated>
             <EChart :option="funnelOption" :height="320" />
+          </ElSkeleton>
+        </ElCard>
+      </ElCol>
+    </ElRow>
+
+    <ElRow :gutter="16" style="margin-top: 16px">
+      <ElCol :xs="24" :lg="14">
+        <ElCard style="border-radius: 14px">
+          <div style="font-weight: 700">🍅 番茄钟统计（近7天）</div>
+          <ElSkeleton :loading="loading" animated>
+            <EChart :option="pomodoroBarOption" :height="320" />
+          </ElSkeleton>
+        </ElCard>
+      </ElCol>
+      <ElCol :xs="24" :lg="10">
+        <ElCard style="border-radius: 14px; height: 100%">
+          <div style="font-weight: 700; margin-bottom: 10px">本周番茄概览</div>
+          <ElSkeleton :loading="loading" animated>
+            <ElRow :gutter="12">
+              <ElCol :span="12">
+                <ElCard shadow="never" style="border-radius: 12px; background: #fef3c7">
+                  <div style="font-size: 12px; color: #92400e; margin-bottom: 4px">🍅 本周番茄</div>
+                  <div style="font-size: 24px; font-weight: 800; color: #78350f">
+                    {{ data?.pomodoroStats?.weekPomodoroCount || 0 }}
+                    <span style="font-size: 13px; font-weight: 500">个</span>
+                  </div>
+                </ElCard>
+              </ElCol>
+              <ElCol :span="12">
+                <ElCard shadow="never" style="border-radius: 12px; background: #dcfce7">
+                  <div style="font-size: 12px; color: #166534; margin-bottom: 4px">⏱ 累计专注</div>
+                  <div style="font-size: 24px; font-weight: 800; color: #14532d">
+                    {{ Math.round((data?.pomodoroStats?.weekFocusMinutes || 0) / 60 * 10) / 10 }}
+                    <span style="font-size: 13px; font-weight: 500">小时</span>
+                  </div>
+                </ElCard>
+              </ElCol>
+            </ElRow>
+            <div style="margin-top: 16px">
+              <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px">最近专注记录</div>
+              <el-scrollbar height="180px">
+                <div v-if="!data?.pomodoroStats?.recentList?.length" style="text-align: center; color: #94a3b8; font-size: 13px; padding: 24px 0">
+                  暂无专注记录
+                </div>
+                <div v-else style="display: flex; flex-direction: column; gap: 8px">
+                  <div
+                    v-for="item in data?.pomodoroStats?.recentList"
+                    :key="item.id"
+                    style="padding: 10px 12px; background: #f8fafc; border-radius: 10px"
+                  >
+                    <div style="display: flex; justify-content: space-between; align-items: center">
+                      <div style="font-size: 13px; font-weight: 500; color: #334155">
+                        🍅 {{ item.presetName || '番茄钟' }}
+                      </div>
+                      <div style="font-size: 12px; color: #f59e0b; font-weight: 600">
+                        {{ Math.round(item.actualFocusSeconds / 60) }}分钟
+                      </div>
+                    </div>
+                    <div v-if="item.resourceName" style="font-size: 12px; color: #64748b; margin-top: 4px">
+                      {{ item.resourceName }}
+                    </div>
+                    <div v-if="item.summary" style="font-size: 12px; color: #94a3b8; margin-top: 4px">
+                      {{ item.summary }}
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px">
+                      {{ new Date(item.startedAt).toLocaleString() }}
+                    </div>
+                  </div>
+                </div>
+              </el-scrollbar>
+            </div>
           </ElSkeleton>
         </ElCard>
       </ElCol>
