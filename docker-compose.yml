@@ -1,0 +1,63 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: label1264
+    ports:
+      - "33264:3306"
+    volumes:
+      - label1264_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    command: --default-authentication-plugin=mysql_native_password
+
+  backend:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: "8000"
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: label1264
+      JWT_SECRET: change-me-in-production
+      CORS_ORIGIN: http://localhost:3264
+    depends_on:
+      db:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    ports:
+      - "8264:8000"
+
+  seed:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: "8000"
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: label1264
+      JWT_SECRET: change-me-in-production
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "seed"]
+    restart: "no"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "3264:80"
+
+volumes:
+  label1264_mysql_data:

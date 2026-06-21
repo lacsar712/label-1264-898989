@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+.DS_Store
+.env
+.env.*
+coverage
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+backend/node_modules
+frontend/node_modules
+
+trae/
+PROMPTS.md

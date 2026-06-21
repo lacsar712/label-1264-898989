@@ -1,0 +1,448 @@
+const {
+  Recommendation,
+  RecommendationRule,
+  SystemParam,
+  User,
+  UserResource,
+  UserTag,
+  Resource,
+  ResourceCategory,
+  SystemLog,
+  UserBehavior,
+} =
+  require('../models');
+
+async function ensureCategoryByCode(categoryId) {
+  let category = await ResourceCategory.findOne({ where: { categoryCode: categoryId } });
+  if (category) return category;
+  if (!String(categoryId || '').startsWith('CAT-')) return null;
+  const raw = String(categoryId).slice(4);
+  const sep = raw.lastIndexOf('-');
+  if (sep <= 0) return null;
+  const subject = raw.slice(0, sep);
+  const type = raw.slice(sep + 1);
+  if (!['课程', '课件', '题库', '视频'].includes(type)) return null;
+  const [created] = await ResourceCategory.findOrCreate({
+    where: { categoryCode: categoryId },
+    defaults: {
+      categoryCode: categoryId,
+      categoryName: subject,
+      parentCategory: type,
+      subject,
+      type,
+      sortOrder: 999,
+      active: true,
+    },
+  });
+  category = created;
+  return category;
+}
+
+async function favorite(req, res) {
+  const userId = req.user.id;
+  const { recommendationId } = req.params;
+
+  const rec = await Recommendation.findOne({ where: { id: recommendationId, userId } });
+  if (!rec) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '推荐不存在' } });
+
+  const [ur] = await UserResource.findOrCreate({
+    where: { userId, resourceId: rec.resourceId },
+    defaults: { status: '收藏', progressPercent: 0, favoritedAt: new Date() },
+  });
+
+  await ur.update({ status: '收藏', favoritedAt: ur.favoritedAt || new Date() });
+  await UserBehavior.create({
+    userId,
+    type: '收藏',
+    resourceId: rec.resourceId,
+    occurredAt: new Date(),
+    dwellSeconds: 5,
+  });
+
+  return res.json({ ok: true });
+}
+
+async function learn(req, res) {
+  const userId = req.user.id;
+  const { recommendationId } = req.params;
+
+  const rec = await Recommendation.findOne({ where: { id: recommendationId, userId } });
+  if (!rec) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '推荐不存在' } });
+
+  const [ur] = await UserResource.findOrCreate({
+    where: { userId, resourceId: rec.resourceId },
+    defaults: { status: '学习中', progressPercent: 10, startedAt: new Date() },
+  });
+
+  await ur.update({ status: '学习中', startedAt: ur.startedAt || new Date(), progressPercent: Math.max(ur.progressPercent, 10) });
+  await rec.update({ clickedAt: rec.clickedAt || new Date() });
+
+  await UserBehavior.create({
+    userId,
+    type: '学习',
+    resourceId: rec.resourceId,
+    occurredAt: new Date(),
+    dwellSeconds: 180,
+  });
+
+  return res.json({ ok: true });
+}
+
+async function unfavorite(req, res) {
+  const userId = req.user.id;
+  const { userResourceId } = req.params;
+  const ur = await UserResource.findOne({ where: { id: userResourceId, userId } });
+  if (!ur) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '记录不存在' } });
+  await ur.destroy();
+  return res.json({ ok: true });
+}
+
+async function moveToQueue(req, res) {
+  const userId = req.user.id;
+  const { userResourceId } = req.params;
+  const ur = await UserResource.findOne({ where: { id: userResourceId, userId } });
+  if (!ur) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '记录不存在' } });
+  await ur.update({ status: '待学' });
+  return res.json({ ok: true });
+}
+
+async function adminUpdateUserStatus(req, res) {
+  const { userId } = req.params;
+  const { active } = req.body;
+  const user = await User.findByPk(userId);
+  if (!user) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '用户不存在' } });
+  await user.update({ active: Boolean(active) });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '用户操作',
+    content: `设置用户#${user.id} active=${Boolean(active)}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminTakeDownResource(req, res) {
+  const { resourceId } = req.params;
+  const resource = await Resource.findOne({ where: { code: resourceId } });
+  if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+  await resource.update({ status: '下架' });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `下架资源 ${resource.code}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminUpdateUserProfile(req, res) {
+  const { userId } = req.params;
+  const user = await User.findByPk(userId);
+  if (!user) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '用户不存在' } });
+
+  const patch = {};
+  if (typeof req.body.name === 'string') patch.name = req.body.name;
+  if (typeof req.body.stage === 'string') patch.stage = req.body.stage;
+  if (typeof req.body.learningStyle === 'string') patch.learningStyle = req.body.learningStyle;
+  if (Array.isArray(req.body.subjectPreference)) patch.subjectPreference = req.body.subjectPreference;
+
+  await user.update(patch);
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '用户操作',
+    content: `编辑用户#${user.id} 基础信息`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminCreateUserTag(req, res) {
+  const { userId, name, category, weight } = req.body;
+  const user = await User.findByPk(userId);
+  if (!user) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '用户不存在' } });
+
+  const tag = await UserTag.create({ userId, name, category, weight });
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '标签操作',
+    content: `新增用户标签#${tag.id} (${tag.name})`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true, data: { id: tag.id } });
+}
+
+async function adminUpdateUserTag(req, res) {
+  const { tagId } = req.params;
+  const tag = await UserTag.findByPk(tagId);
+  if (!tag) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '标签不存在' } });
+
+  const patch = {};
+  if (typeof req.body.name === 'string') patch.name = req.body.name;
+  if (typeof req.body.category === 'string') patch.category = req.body.category;
+  if (typeof req.body.weight === 'number') patch.weight = req.body.weight;
+  await tag.update(patch);
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '标签操作',
+    content: `编辑用户标签#${tag.id} (${tag.name})`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true });
+}
+
+async function adminDeleteUserTag(req, res) {
+  const { tagId } = req.params;
+  const tag = await UserTag.findByPk(tagId);
+  if (!tag) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '标签不存在' } });
+  await tag.destroy();
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '标签操作',
+    content: `删除用户标签#${tag.id} (${tag.name})`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true });
+}
+
+async function adminUpdateResource(req, res) {
+  const { resourceId } = req.params;
+  const resource = await Resource.findOne({ where: { code: resourceId } });
+  if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+
+  const patch = {};
+  for (const k of ['name', 'subject', 'type', 'difficulty', 'status']) {
+    if (typeof req.body[k] === 'string') patch[k] = req.body[k];
+  }
+  if (typeof req.body.heat === 'number') patch.heat = req.body.heat;
+
+  await resource.update(patch);
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `编辑资源 ${resource.code}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true });
+}
+
+async function adminReviewResource(req, res) {
+  const { resourceId } = req.params;
+  const { status } = req.body;
+  const resource = await Resource.findOne({ where: { code: resourceId } });
+  if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+  await resource.update({ status });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `审核资源 ${resource.code} => ${status}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminDeleteResource(req, res) {
+  const { resourceId } = req.params;
+  const resource = await Resource.findOne({ where: { code: resourceId } });
+  if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+  await resource.update({ deleted: true, status: '下架' });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `删除资源 ${resource.code}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminUpdateSystemParam(req, res) {
+  const { paramCode } = req.params;
+  const { value } = req.body;
+  const param = await SystemParam.findOne({ where: { paramCode } });
+  if (!param) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '参数不存在' } });
+  await param.update({ value: String(value), updatedBy: req.user.username || String(req.user.id) });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '配置修改',
+    content: `更新参数 ${param.paramCode}=${param.value}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminRestoreSystemParam(req, res) {
+  const { paramCode } = req.params;
+  const param = await SystemParam.findOne({ where: { paramCode } });
+  if (!param) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '参数不存在' } });
+  await param.update({ value: param.defaultValue, updatedBy: req.user.username || String(req.user.id) });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '配置修改',
+    content: `恢复默认参数 ${param.paramCode}=${param.value}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminUpdateRuleWeights(req, res) {
+  const { ruleCode } = req.params;
+  const { weightRatio } = req.body;
+  const rule = await RecommendationRule.findOne({ where: { ruleCode } });
+  if (!rule) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '规则不存在' } });
+  await rule.update({ weightRatio });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '配置修改',
+    content: `更新规则权重 ${rule.ruleCode}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+
+  return res.json({ ok: true });
+}
+
+async function adminCreateResourceCategory(req, res) {
+  const { categoryName, parentCategory, subject, type, sortOrder } = req.body;
+  const categoryCode = `CAT-${subject}-${type}`;
+  const [category, created] = await ResourceCategory.findOrCreate({
+    where: { categoryCode },
+    defaults: {
+      categoryCode,
+      categoryName,
+      parentCategory,
+      subject,
+      type,
+      sortOrder: Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 999,
+      active: true,
+    },
+  });
+  if (!created) {
+    await category.update({
+      categoryName,
+      parentCategory,
+      subject,
+      type,
+      sortOrder: Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : category.sortOrder,
+      active: true,
+    });
+  }
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `新增分类 ${category.categoryCode}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true, data: { categoryId: category.categoryCode } });
+}
+
+async function adminUpdateResourceCategory(req, res) {
+  const { categoryId } = req.params;
+  const category = await ensureCategoryByCode(categoryId);
+  if (!category) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '分类不存在' } });
+  if (!category.active) await category.update({ active: true });
+
+  const oldSubject = category.subject;
+  const oldType = category.type;
+  const patch = {};
+  for (const k of ['categoryName', 'parentCategory', 'subject', 'type']) {
+    if (typeof req.body[k] === 'string' && req.body[k]) patch[k] = req.body[k];
+  }
+  if (Number.isFinite(Number(req.body.sortOrder))) patch.sortOrder = Number(req.body.sortOrder);
+
+  await category.update(patch);
+  if ((patch.subject && patch.subject !== oldSubject) || (patch.type && patch.type !== oldType)) {
+    await Resource.update(
+      { subject: patch.subject || oldSubject, type: patch.type || oldType },
+      { where: { subject: oldSubject, type: oldType, deleted: false } }
+    );
+  }
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `编辑分类 ${category.categoryCode}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true });
+}
+
+async function adminMergeResourceCategory(req, res) {
+  const { categoryId } = req.params;
+  const { targetCategoryId } = req.body;
+  if (categoryId === targetCategoryId) {
+    return res.status(400).json({ ok: false, error: { code: 'INVALID_PARAM', message: '目标分类不能与源分类相同' } });
+  }
+
+  const source = await ensureCategoryByCode(categoryId);
+  const target = await ensureCategoryByCode(targetCategoryId);
+  if (!source || !target) {
+    return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '分类不存在' } });
+  }
+  if (!target.active) await target.update({ active: true });
+
+  await Resource.update(
+    { subject: target.subject, type: target.type },
+    { where: { subject: source.subject, type: source.type, deleted: false } }
+  );
+  await source.update({ active: false });
+
+  await SystemLog.create({
+    actorUserId: req.user.id,
+    type: '资源操作',
+    content: `合并分类 ${source.categoryCode} -> ${target.categoryCode}`,
+    ip: req.ip || '',
+    status: '成功',
+  });
+  return res.json({ ok: true });
+}
+
+module.exports = {
+  favorite,
+  learn,
+  unfavorite,
+  moveToQueue,
+  adminUpdateUserStatus,
+  adminTakeDownResource,
+  adminUpdateUserProfile,
+  adminCreateUserTag,
+  adminUpdateUserTag,
+  adminDeleteUserTag,
+  adminUpdateResource,
+  adminReviewResource,
+  adminDeleteResource,
+  adminUpdateSystemParam,
+  adminRestoreSystemParam,
+  adminUpdateRuleWeights,
+  adminCreateResourceCategory,
+  adminUpdateResourceCategory,
+  adminMergeResourceCategory,
+};
