@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElScrollbar } from 'element-plus'
 import {
@@ -13,10 +13,12 @@ import {
   SwitchButton,
   Compass,
   Document,
+  Reading,
 } from '@element-plus/icons-vue'
 
 import ErrorBoundary from '../components/ErrorBoundary.vue'
 import { useAuth } from '../stores/auth'
+import { api } from '../lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,10 +26,21 @@ const { state, isAdmin, clearAuth } = useAuth()
 
 const active = computed(() => route.path)
 
+const todayDueCount = ref(0)
+
+async function loadTodayDueCount() {
+  try {
+    const resp = await api.get('/flashcards/today-count')
+    todayDueCount.value = resp.data?.data?.count || 0
+  } catch (e) {}
+}
+
 function logout() {
   clearAuth()
   router.replace('/login')
 }
+
+onMounted(loadTodayDueCount)
 </script>
 
 <template>
@@ -63,6 +76,27 @@ function logout() {
           <el-menu-item index="/assignments">
             <el-icon><Document /></el-icon>
             <span>我的作业</span>
+          </el-menu-item>
+          <el-menu-item index="/flashcards">
+            <el-icon><Reading /></el-icon>
+            <span>闪卡复习</span>
+            <span
+              v-if="todayDueCount > 0"
+              style="
+                margin-left: 6px;
+                background: #ef4444;
+                color: white;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 1px 6px;
+                border-radius: 10px;
+                min-width: 18px;
+                text-align: center;
+                line-height: 16px;
+              "
+            >
+              {{ todayDueCount }}
+            </span>
           </el-menu-item>
 
           <el-sub-menu v-if="isAdmin" index="/admin">

@@ -1,11 +1,22 @@
 <script setup>
 import { computed } from 'vue'
-import { ElButton, ElCard, ElCol, ElRow, ElSkeleton, ElTable, ElTableColumn, ElTag } from 'element-plus'
+import { ElButton, ElCard, ElCol, ElRow, ElSkeleton, ElTable, ElTableColumn, ElTag, ElMessage } from 'element-plus'
 
 import EChart from '../components/EChart.vue'
 import { usePageData } from '../lib/usePageData'
+import { api } from '../lib/api'
 
 const { data, loading, refresh } = usePageData('/pages/progress')
+
+async function addToFlashcard(wrongId) {
+  try {
+    await api.post('/flashcards/from-wrong-question', { wrongQuestionId: wrongId })
+    ElMessage.success('已加入闪卡队列')
+  } catch (e) {
+    const msg = e?.response?.data?.error?.message || '加入闪卡失败'
+    ElMessage.error(msg)
+  }
+}
 
 const subjectPieOption = computed(() => ({
   tooltip: { trigger: 'item' },
@@ -263,6 +274,13 @@ const pomodoroBarOption = computed(() => ({
                 <ElTableColumn prop="corrected" label="订正状态" width="80" />
                 <ElTableColumn prop="mastery" label="掌握程度" width="80" />
                 <ElTableColumn prop="reviewedAt" label="复盘时间" min-width="150" />
+                <ElTableColumn label="操作" width="100" fixed="right">
+                  <template #default="{ row }">
+                    <ElButton type="primary" text size="small" @click="addToFlashcard(row.wrongId)">
+                      加入闪卡
+                    </ElButton>
+                  </template>
+                </ElTableColumn>
               </ElTable>
             </el-scrollbar>
           </ElSkeleton>

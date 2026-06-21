@@ -22,6 +22,8 @@ const FocusSession = require('./focusSession')(sequelize, DataTypes);
 const FocusPreset = require('./focusPreset')(sequelize, DataTypes);
 const Assignment = require('./assignment')(sequelize, DataTypes);
 const AssignmentSubmission = require('./assignmentSubmission')(sequelize, DataTypes);
+const Flashcard = require('./flashcard')(sequelize, DataTypes);
+const FlashcardReview = require('./flashcardReview')(sequelize, DataTypes);
 
 User.hasMany(UserTag, { foreignKey: 'userId', as: 'tags' });
 UserTag.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -93,6 +95,15 @@ AssignmentSubmission.belongsTo(Assignment, { foreignKey: 'assignmentId', as: 'as
 User.hasMany(AssignmentSubmission, { foreignKey: 'userId', as: 'assignmentSubmissions' });
 AssignmentSubmission.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+User.hasMany(Flashcard, { foreignKey: 'userId', as: 'flashcards' });
+Flashcard.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Flashcard.hasMany(FlashcardReview, { foreignKey: 'flashcardId', as: 'reviews' });
+FlashcardReview.belongsTo(Flashcard, { foreignKey: 'flashcardId', as: 'flashcard' });
+
+User.hasMany(FlashcardReview, { foreignKey: 'userId', as: 'flashcardReviews' });
+FlashcardReview.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
@@ -115,4 +126,6 @@ module.exports = {
   FocusPreset,
   Assignment,
   AssignmentSubmission,
+  Flashcard,
+  FlashcardReview,
 };
