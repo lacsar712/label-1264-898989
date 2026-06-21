@@ -13,7 +13,9 @@ import {
   ElTable,
   ElTableColumn,
   ElTag,
+  ElTooltip,
 } from 'element-plus'
+import { Document } from '@element-plus/icons-vue'
 
 import EChart from '../components/EChart.vue'
 import PomodoroTimer from '../components/PomodoroTimer.vue'
@@ -276,9 +278,19 @@ async function confirmFavorite() {
                     <ElTag type="success" effect="plain">{{ Number(row.matchScore).toFixed(3) }}</ElTag>
                   </template>
                 </ElTableColumn>
-                <ElTableColumn label="操作" width="170" fixed="right">
+                <ElTableColumn label="操作" width="240" fixed="right">
                   <template #default="{ row }">
-                    <div style="display: flex; gap: 8px">
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                      <ElButton
+                        v-if="row.type === '课程'"
+                        size="small"
+                        type="primary"
+                        plain
+                        @click="router.push(`/resources/outline/${row.resourceId}`)"
+                      >
+                        <Document style="width: 12px; height: 12px; margin-right: 2px" />
+                        大纲
+                      </ElButton>
                       <ElButton size="small" type="primary" @click="doLearn(row)">学习</ElButton>
                       <ElButton size="small" @click="openFavoriteDialog(row)">收藏</ElButton>
                     </div>

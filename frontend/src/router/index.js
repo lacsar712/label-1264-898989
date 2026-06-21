@@ -21,6 +21,7 @@ import StudentReportsPage from '../pages/StudentReportsPage.vue'
 import ReportPreviewPage from '../pages/ReportPreviewPage.vue'
 import DiaryPage from '../pages/DiaryPage.vue'
 import BadgesPage from '../pages/BadgesPage.vue'
+import CourseOutlinePage from '../pages/CourseOutlinePage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,6 +34,7 @@ const router = createRouter({
       children: [
         { path: 'home', component: HomePage },
         { path: 'resources', component: ResourcesPage },
+        { path: 'resources/outline/:resourceId', component: CourseOutlinePage },
         { path: 'resources/compare', component: ResourcesComparePage },
         { path: 'recommendation-analysis', component: RecommendationAnalysisPage },
         { path: 'progress', component: ProgressPage },

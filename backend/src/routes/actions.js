@@ -202,4 +202,68 @@ router.post('/assignments/:assignmentId/submit', auth, asyncHandler(action.stude
 
 router.get('/resources/detail', auth, asyncHandler(action.getResourcesDetail));
 
+router.get('/admin/course-outlines/:resourceId', auth, requireAdmin, asyncHandler(action.getCourseOutlineAdmin));
+router.post(
+  '/admin/course-outlines/:resourceId/chapters',
+  auth,
+  requireAdmin,
+  [body('title').isString().trim().isLength({ min: 1, max: 200 }), body('description').optional(), body('sortOrder').optional().isInt({ min: 0 })],
+  validate,
+  asyncHandler(action.adminCreateChapter)
+);
+router.put(
+  '/admin/course-chapters/:chapterId',
+  auth,
+  requireAdmin,
+  [body('title').optional().isString().trim().isLength({ min: 1, max: 200 }), body('description').optional(), body('sortOrder').optional().isInt({ min: 0 })],
+  validate,
+  asyncHandler(action.adminUpdateChapter)
+);
+router.delete('/admin/course-chapters/:chapterId', auth, requireAdmin, asyncHandler(action.adminDeleteChapter));
+
+router.post(
+  '/admin/course-chapters/:chapterId/sections',
+  auth,
+  requireAdmin,
+  [body('title').isString().trim().isLength({ min: 1, max: 200 }), body('description').optional(), body('sortOrder').optional().isInt({ min: 0 })],
+  validate,
+  asyncHandler(action.adminCreateSection)
+);
+router.put(
+  '/admin/course-sections/:sectionId',
+  auth,
+  requireAdmin,
+  [body('title').optional().isString().trim().isLength({ min: 1, max: 200 }), body('description').optional(), body('sortOrder').optional().isInt({ min: 0 })],
+  validate,
+  asyncHandler(action.adminUpdateSection)
+);
+router.delete('/admin/course-sections/:sectionId', auth, requireAdmin, asyncHandler(action.adminDeleteSection));
+
+router.post(
+  '/admin/course-sections/:sectionId/knowledge-points',
+  auth,
+  requireAdmin,
+  [body('title').isString().trim().isLength({ min: 1, max: 200 }), body('description').optional(), body('sortOrder').optional().isInt({ min: 0 })],
+  validate,
+  asyncHandler(action.adminCreateKnowledgePoint)
+);
+router.put(
+  '/admin/course-knowledge-points/:kpId',
+  auth,
+  requireAdmin,
+  [body('title').optional().isString().trim().isLength({ min: 1, max: 200 }), body('description').optional(), body('sortOrder').optional().isInt({ min: 0 })],
+  validate,
+  asyncHandler(action.adminUpdateKnowledgePoint)
+);
+router.delete('/admin/course-knowledge-points/:kpId', auth, requireAdmin, asyncHandler(action.adminDeleteKnowledgePoint));
+
+router.get('/course-outlines/:resourceId', auth, asyncHandler(action.getCourseOutlineWithProgress));
+router.post(
+  '/course-knowledge-points/:kpId/toggle-learned',
+  auth,
+  [body('learned').isBoolean()],
+  validate,
+  asyncHandler(action.toggleKnowledgePointLearned)
+);
+
 module.exports = router;

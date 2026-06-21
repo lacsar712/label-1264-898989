@@ -26,6 +26,10 @@ const Flashcard = require('./flashcard')(sequelize, DataTypes);
 const FlashcardReview = require('./flashcardReview')(sequelize, DataTypes);
 const LearningReport = require('./learningReport')(sequelize, DataTypes);
 const DiaryEntry = require('./diaryEntry')(sequelize, DataTypes);
+const CourseChapter = require('./courseChapter')(sequelize, DataTypes);
+const CourseSection = require('./courseSection')(sequelize, DataTypes);
+const CourseKnowledgePoint = require('./courseKnowledgePoint')(sequelize, DataTypes);
+const UserLearningProgress = require('./userLearningProgress')(sequelize, DataTypes);
 
 User.hasMany(UserTag, { foreignKey: 'userId', as: 'tags' });
 UserTag.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -113,6 +117,21 @@ LearningReport.belongsTo(User, { foreignKey: 'generatedBy', as: 'generator' });
 User.hasMany(DiaryEntry, { foreignKey: 'userId', as: 'diaryEntries' });
 DiaryEntry.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+Resource.hasMany(CourseChapter, { foreignKey: 'resourceId', as: 'chapters' });
+CourseChapter.belongsTo(Resource, { foreignKey: 'resourceId', as: 'resource' });
+
+CourseChapter.hasMany(CourseSection, { foreignKey: 'chapterId', as: 'sections' });
+CourseSection.belongsTo(CourseChapter, { foreignKey: 'chapterId', as: 'chapter' });
+
+CourseSection.hasMany(CourseKnowledgePoint, { foreignKey: 'sectionId', as: 'knowledgePoints' });
+CourseKnowledgePoint.belongsTo(CourseSection, { foreignKey: 'sectionId', as: 'section' });
+
+User.hasMany(UserLearningProgress, { foreignKey: 'userId', as: 'learningProgresses' });
+UserLearningProgress.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+CourseKnowledgePoint.hasMany(UserLearningProgress, { foreignKey: 'knowledgePointId', as: 'progresses' });
+UserLearningProgress.belongsTo(CourseKnowledgePoint, { foreignKey: 'knowledgePointId', as: 'knowledgePoint' });
+
 module.exports = {
   sequelize,
   User,
@@ -139,4 +158,8 @@ module.exports = {
   FlashcardReview,
   LearningReport,
   DiaryEntry,
+  CourseChapter,
+  CourseSection,
+  CourseKnowledgePoint,
+  UserLearningProgress,
 };

@@ -22,6 +22,7 @@ import {
 } from 'element-plus'
 
 import EChart from '../../components/EChart.vue'
+import CourseOutlineEditor from '../../components/CourseOutlineEditor.vue'
 import { api } from '../../lib/api'
 import { usePageData } from '../../lib/usePageData'
 
@@ -166,6 +167,14 @@ function openMergeCategory(row) {
   categoryDialogOpen.value = true
 }
 
+const outlineEditorOpen = ref(false)
+const outlineEditorResource = ref(null)
+
+function openOutlineEditor(row) {
+  outlineEditorResource.value = row
+  outlineEditorOpen.value = true
+}
+
 async function submitCategoryDialog() {
   if (categoryDialogMode.value === 'create') {
     await api.post('/actions/admin/resource-categories', {
@@ -231,10 +240,18 @@ async function submitCategoryDialog() {
                 <ElTableColumn prop="difficulty" label="难度" width="70" />
                 <ElTableColumn prop="status" label="状态" width="80" />
                 <ElTableColumn prop="uploadedAt" label="上传时间" min-width="150" />
-                <ElTableColumn label="操作" width="260" fixed="right">
+                <ElTableColumn label="操作" width="360" fixed="right">
                   <template #default="{ row }">
                     <div style="display: flex; gap: 8px; flex-wrap: wrap">
                       <ElButton size="small" @click="openEdit(row)">编辑</ElButton>
+                      <ElButton
+                        v-if="row.type === '课程'"
+                        size="small"
+                        type="primary"
+                        @click="openOutlineEditor(row)"
+                      >
+                        编辑大纲
+                      </ElButton>
                       <ElButton size="small" type="primary" plain @click="review(row, '上架')">审核通过</ElButton>
                       <ElButton size="small" type="warning" plain @click="review(row, '审核中')">转审核</ElButton>
                       <ElButton size="small" type="danger" plain @click="takeDown(row)">下架</ElButton>
@@ -416,4 +433,10 @@ async function submitCategoryDialog() {
       <ElButton type="primary" @click="submitCategoryDialog">确认</ElButton>
     </template>
   </ElDialog>
+
+  <CourseOutlineEditor
+    v-model="outlineEditorOpen"
+    :resource="outlineEditorResource"
+    @refresh="refresh"
+  />
 </template>

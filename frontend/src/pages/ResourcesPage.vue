@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ElButton,
   ElCard,
@@ -23,13 +24,15 @@ import {
   ElTooltip,
   ElCheckbox,
 } from 'element-plus'
-import { Folder, FolderAdd, Edit, Delete, Sort, SetUp, Scale } from '@element-plus/icons-vue'
+import { Folder, FolderAdd, Edit, Delete, Sort, SetUp, Scale, Document } from '@element-plus/icons-vue'
 
 import EChart from '../components/EChart.vue'
 import CompareBasket from '../components/CompareBasket.vue'
 import { api } from '../lib/api'
 import { usePageData } from '../lib/usePageData'
 import { useCompare } from '../stores/compare'
+
+const router = useRouter()
 
 const { toggleCompare, isSelected, isFull, MAX_COMPARE } = useCompare()
 
@@ -367,6 +370,22 @@ async function confirmMoveResource() {
                   </template>
                 </ElTableColumn>
                 <ElTableColumn prop="updatedAt" label="更新时间" width="150" />
+                <ElTableColumn label="操作" width="120" fixed="right">
+                  <template #default="{ row }">
+                    <div style="display: flex; gap: 4px">
+                      <ElButton
+                        v-if="row.type === '课程'"
+                        size="small"
+                        type="primary"
+                        plain
+                        @click="router.push(`/resources/outline/${row.resourceId}`)"
+                      >
+                        <Document style="width: 12px; height: 12px; margin-right: 2px" />
+                        大纲
+                      </ElButton>
+                    </div>
+                  </template>
+                </ElTableColumn>
               </ElTable>
             </el-scrollbar>
             <div style="display: flex; justify-content: flex-end; padding-top: 8px">

@@ -98,6 +98,7 @@ async function getHomeData(userId) {
     recommendationId: r.id,
     resourceId: r.resource?.code,
     name: r.resource?.name,
+    type: r.resource?.type,
     adaptedTags: r.adaptedTags || [],
     matchScore: safeNumber(r.matchScore),
   }));

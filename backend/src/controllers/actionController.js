@@ -12,10 +12,14 @@ const {
   FavoriteFolder,
   Assignment,
   AssignmentSubmission,
+  CourseChapter,
+  CourseSection,
+  CourseKnowledgePoint,
 } =
   require('../models');
 
 const { getResourcesByCodes } = require('../services/pages/resourcesService');
+const courseOutlineService = require('../services/courseOutlineService');
 
 async function ensureDefaultFolder(userId) {
   const [folder] = await FavoriteFolder.findOrCreate({
@@ -639,6 +643,243 @@ async function getResourcesDetail(req, res) {
   return res.json({ ok: true, data });
 }
 
+function toHttpError(e) {
+  const msg = e.message || String(e);
+  if (msg.includes('NOT_FOUND')) {
+    return { status: 404, code: 'NOT_FOUND', message: '数据不存在' };
+  }
+  if (msg.includes('INVALID')) {
+    return { status: 400, code: 'INVALID_PARAM', message: '参数错误' };
+  }
+  return null;
+}
+
+async function getCourseOutlineAdmin(req, res) {
+  const { resourceId } = req.params;
+  const resource = await Resource.findOne({ where: { code: resourceId } });
+  if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+  const outline = await courseOutlineService.getOutlineByResourceId(resource.id);
+  return res.json({ ok: true, data: outline });
+}
+
+async function adminCreateChapter(req, res) {
+  try {
+    const { resourceId } = req.params;
+    const resource = await Resource.findOne({ where: { code: resourceId } });
+    if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+    const { title, description, sortOrder } = req.body;
+    const chapter = await courseOutlineService.createChapter({
+      resourceId: resource.id,
+      title,
+      description,
+      sortOrder,
+    });
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `为资源${resource.code}新增章节「${chapter.title}」`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true, data: { id: chapter.id } });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminUpdateChapter(req, res) {
+  try {
+    const { chapterId } = req.params;
+    const { title, description, sortOrder } = req.body;
+    await courseOutlineService.updateChapter(chapterId, { title, description, sortOrder });
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `编辑章节#${chapterId}`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminDeleteChapter(req, res) {
+  try {
+    const { chapterId } = req.params;
+    await courseOutlineService.deleteChapter(chapterId);
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `删除章节#${chapterId}`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminCreateSection(req, res) {
+  try {
+    const { chapterId } = req.params;
+    const { title, description, sortOrder } = req.body;
+    const section = await courseOutlineService.createSection({ chapterId, title, description, sortOrder });
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `新增小节「${section.title}」(章节#${chapterId})`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true, data: { id: section.id } });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminUpdateSection(req, res) {
+  try {
+    const { sectionId } = req.params;
+    const { title, description, sortOrder } = req.body;
+    await courseOutlineService.updateSection(sectionId, { title, description, sortOrder });
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `编辑小节#${sectionId}`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminDeleteSection(req, res) {
+  try {
+    const { sectionId } = req.params;
+    await courseOutlineService.deleteSection(sectionId);
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `删除小节#${sectionId}`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminCreateKnowledgePoint(req, res) {
+  try {
+    const { sectionId } = req.params;
+    const { title, description, sortOrder } = req.body;
+    const kp = await courseOutlineService.createKnowledgePoint({ sectionId, title, description, sortOrder });
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `新增知识点「${kp.title}」(小节#${sectionId})`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true, data: { id: kp.id } });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminUpdateKnowledgePoint(req, res) {
+  try {
+    const { kpId } = req.params;
+    const { title, description, sortOrder } = req.body;
+    await courseOutlineService.updateKnowledgePoint(kpId, { title, description, sortOrder });
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `编辑知识点#${kpId}`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function adminDeleteKnowledgePoint(req, res) {
+  try {
+    const { kpId } = req.params;
+    await courseOutlineService.deleteKnowledgePoint(kpId);
+    await SystemLog.create({
+      actorUserId: req.user.id,
+      type: '资源操作',
+      content: `删除知识点#${kpId}`,
+      ip: req.ip || '',
+      status: '成功',
+    });
+    return res.json({ ok: true });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
+async function getCourseOutlineWithProgress(req, res) {
+  const { resourceId } = req.params;
+  const resource = await Resource.findOne({ where: { code: resourceId } });
+  if (!resource) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '资源不存在' } });
+  const outline = await courseOutlineService.getOutlineWithProgress(resource.id, req.user.id);
+  return res.json({ ok: true, data: outline });
+}
+
+async function toggleKnowledgePointLearned(req, res) {
+  try {
+    const { kpId } = req.params;
+    const { learned } = req.body;
+    const result = await courseOutlineService.toggleKnowledgePointLearned(req.user.id, kpId, !!learned);
+    const kp = await CourseKnowledgePoint.findByPk(kpId);
+    const section = kp ? await CourseSection.findByPk(kp.sectionId) : null;
+    const chapter = section ? await CourseChapter.findByPk(section.chapterId) : null;
+    if (chapter) {
+      await courseOutlineService.syncUserResourceProgress(req.user.id, chapter.resourceId);
+      await UserBehavior.create({
+        userId: req.user.id,
+        type: learned ? '完成知识点' : '取消已学',
+        resourceId: chapter.resourceId,
+        occurredAt: new Date(),
+        dwellSeconds: 30,
+      });
+    }
+    return res.json({ ok: true, data: result });
+  } catch (e) {
+    const err = toHttpError(e);
+    if (err) return res.status(err.status).json({ ok: false, error: { code: err.code, message: err.message } });
+    throw e;
+  }
+}
+
 module.exports = {
   favorite,
   learn,
@@ -670,4 +911,16 @@ module.exports = {
   studentStartAssignment,
   studentSubmitAssignment,
   getResourcesDetail,
+  getCourseOutlineAdmin,
+  adminCreateChapter,
+  adminUpdateChapter,
+  adminDeleteChapter,
+  adminCreateSection,
+  adminUpdateSection,
+  adminDeleteSection,
+  adminCreateKnowledgePoint,
+  adminUpdateKnowledgePoint,
+  adminDeleteKnowledgePoint,
+  getCourseOutlineWithProgress,
+  toggleKnowledgePointLearned,
 };
