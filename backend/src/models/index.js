@@ -10,6 +10,7 @@ const ResourceTag = require('./resourceTag')(sequelize, DataTypes);
 const RecommendationBatch = require('./recommendationBatch')(sequelize, DataTypes);
 const Recommendation = require('./recommendation')(sequelize, DataTypes);
 const UserResource = require('./userResource')(sequelize, DataTypes);
+const FavoriteFolder = require('./favoriteFolder')(sequelize, DataTypes);
 const LearningDaily = require('./learningDaily')(sequelize, DataTypes);
 const LearningGoal = require('./learningGoal')(sequelize, DataTypes);
 const WrongQuestion = require('./wrongQuestion')(sequelize, DataTypes);
@@ -42,6 +43,13 @@ UserResource.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Resource.hasMany(UserResource, { foreignKey: 'resourceId', as: 'userResources' });
 UserResource.belongsTo(Resource, { foreignKey: 'resourceId', as: 'resource' });
 
+User.hasMany(FavoriteFolder, { foreignKey: 'userId', as: 'favoriteFolders' });
+FavoriteFolder.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+FavoriteFolder.hasMany(FavoriteFolder, { foreignKey: 'parentId', as: 'children' });
+FavoriteFolder.belongsTo(FavoriteFolder, { foreignKey: 'parentId', as: 'parent' });
+FavoriteFolder.hasMany(UserResource, { foreignKey: 'folderId', as: 'resources' });
+UserResource.belongsTo(FavoriteFolder, { foreignKey: 'folderId', as: 'folder' });
+
 User.hasMany(LearningDaily, { foreignKey: 'userId', as: 'learningDaily' });
 LearningDaily.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
@@ -70,6 +78,7 @@ module.exports = {
   RecommendationBatch,
   Recommendation,
   UserResource,
+  FavoriteFolder,
   LearningDaily,
   LearningGoal,
   WrongQuestion,

@@ -8,10 +8,47 @@ const { asyncHandler } = require('../utils/asyncHandler');
 
 const router = express.Router();
 
-router.post('/recommendations/:recommendationId/favorite', auth, asyncHandler(action.favorite));
+router.post(
+  '/recommendations/:recommendationId/favorite',
+  auth,
+  [body('folderId').optional().isInt({ min: 1 })],
+  validate,
+  asyncHandler(action.favorite)
+);
 router.post('/recommendations/:recommendationId/learn', auth, asyncHandler(action.learn));
 router.delete('/user-resources/:userResourceId', auth, asyncHandler(action.unfavorite));
 router.post('/user-resources/:userResourceId/move-to-queue', auth, asyncHandler(action.moveToQueue));
+router.post(
+  '/user-resources/:userResourceId/move-to-folder',
+  auth,
+  [body('folderId').optional().isInt({ min: 1 })],
+  validate,
+  asyncHandler(action.moveResourceToFolder)
+);
+
+router.get('/favorite-folders', auth, asyncHandler(action.listFolders));
+router.post(
+  '/favorite-folders',
+  auth,
+  [body('name').isString().trim().isLength({ min: 1, max: 64 }), body('parentId').optional().isInt({ min: 1 })],
+  validate,
+  asyncHandler(action.createFolder)
+);
+router.put(
+  '/favorite-folders/:folderId/rename',
+  auth,
+  [body('name').isString().trim().isLength({ min: 1, max: 64 })],
+  validate,
+  asyncHandler(action.renameFolder)
+);
+router.post(
+  '/favorite-folders/sort',
+  auth,
+  [body('orders').isArray({ min: 0 })],
+  validate,
+  asyncHandler(action.sortFolders)
+);
+router.delete('/favorite-folders/:folderId', auth, asyncHandler(action.deleteFolder));
 
 router.post(
   '/admin/users/:userId/status',

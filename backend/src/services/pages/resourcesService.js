@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 
-const { Resource, ResourceTag, UserResource } = require('../../models');
+const { Resource, ResourceTag, UserResource, FavoriteFolder } = require('../../models');
 
 const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物'];
 const RESOURCE_TYPES = ['课程', '课件', '题库', '视频'];
@@ -30,6 +30,20 @@ function listRecentDates(days) {
   const out = [];
   for (let i = days - 1; i >= 0; i -= 1) out.push(toDateOnly(daysAgo(i)));
   return out;
+}
+
+async function ensureDefaultFolder(userId) {
+  const [folder] = await FavoriteFolder.findOrCreate({
+    where: { userId, isDefault: true },
+    defaults: {
+      userId,
+      name: '默认收藏夹',
+      isDefault: true,
+      parentId: null,
+      sortOrder: 0,
+    },
+  });
+  return folder;
 }
 
 async function getResourcesData(userId) {
@@ -104,6 +118,20 @@ async function getResourcesData(userId) {
     }));
   }
 
+  const defaultFolder = await ensureDefaultFolder(userId);
+
+  const nullFolders = await UserResource.findAll({
+    where: { userId, status: { [Op.in]: ['收藏', '待学'] }, folderId: null },
+  });
+  if (nullFolders.length > 0) {
+    await UserResource.update({ folderId: defaultFolder.id }, { where: { id: { [Op.in]: nullFolders.map((x) => x.id) } } });
+  }
+
+  const favoriteFolders = await FavoriteFolder.findAll({
+    where: { userId },
+    order: [['sortOrder', 'ASC'], ['id', 'ASC']],
+  });
+
   const userResources = await UserResource.findAll({
     where: { userId, status: { [Op.in]: ['收藏', '待学'] } },
     include: [{ model: Resource, as: 'resource', where: { deleted: false }, required: false }],
@@ -118,7 +146,21 @@ async function getResourcesData(userId) {
       favoritedAt: ur.favoritedAt,
       progressPercent: ur.progressPercent,
       status: ur.status,
+      folderId: ur.folderId || defaultFolder.id,
     }));
+
+  const favoriteGroups = favoriteFolders.map((folder) => {
+    const items = favoriteTable.filter((x) => Number(x.folderId) === Number(folder.id));
+    return {
+      id: folder.id,
+      name: folder.name,
+      isDefault: folder.isDefault,
+      parentId: folder.parentId,
+      sortOrder: folder.sortOrder,
+      resourceCount: items.length,
+      items,
+    };
+  });
 
   const favoriteCompletionTrend7d = [];
   for (const date of listRecentDates(7)) {
@@ -141,6 +183,14 @@ async function getResourcesData(userId) {
     tagRelationTable,
     favoriteCompletionTrend7d,
     favoriteTable,
+    favoriteFolders: favoriteFolders.map((f) => ({
+      id: f.id,
+      name: f.name,
+      isDefault: f.isDefault,
+      parentId: f.parentId,
+      sortOrder: f.sortOrder,
+    })),
+    favoriteGroups,
   };
 }
 

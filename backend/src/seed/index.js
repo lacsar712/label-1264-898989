@@ -13,6 +13,7 @@ const {
   RecommendationBatch,
   Recommendation,
   UserResource,
+  FavoriteFolder,
   LearningDaily,
   LearningGoal,
   WrongQuestion,
@@ -410,6 +411,40 @@ async function main() {
 
   await UserResource.bulkCreate(userResourceRows, { validate: true, ignoreDuplicates: true });
   await UserBehavior.bulkCreate(behaviorRows, { validate: true });
+
+  const allUserIds = [admin.id, student.id, ...extraUsers.map((u) => u.id)];
+  for (const uid of allUserIds) {
+    const defaultFolder = await FavoriteFolder.create({
+      userId: uid,
+      name: '默认收藏夹',
+      isDefault: true,
+      parentId: null,
+      sortOrder: 0,
+    });
+    if (uid === student.id) {
+      const midFolder = await FavoriteFolder.create({
+        userId: uid,
+        name: '期末复习',
+        isDefault: false,
+        parentId: null,
+        sortOrder: 1,
+      });
+      await FavoriteFolder.create({
+        userId: uid,
+        name: '日常积累',
+        isDefault: false,
+        parentId: null,
+        sortOrder: 2,
+      });
+      const studentUrs = await UserResource.findAll({ where: { userId: uid, status: { [require('sequelize').Op.in]: ['收藏', '待学'] } }, limit: 20 });
+      const half = Math.ceil(studentUrs.length / 2);
+      for (let i = 0; i < studentUrs.length; i += 1) {
+        await studentUrs[i].update({ folderId: i < half ? midFolder.id : defaultFolder.id });
+      }
+    } else {
+      await UserResource.update({ folderId: defaultFolder.id }, { where: { userId: uid } });
+    }
+  }
 
   await SystemLog.create({
     actorUserId: admin.id,

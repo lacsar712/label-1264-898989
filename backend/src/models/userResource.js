@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
       id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
       userId: { type: DataTypes.INTEGER, allowNull: false },
       resourceId: { type: DataTypes.INTEGER, allowNull: false },
+      folderId: { type: DataTypes.INTEGER, allowNull: true, defaultValue: null },
       status: {
         type: DataTypes.ENUM('收藏', '待学', '学习中', '已完成'),
         allowNull: false,
@@ -17,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       tableName: 'user_resources',
-      indexes: [{ unique: true, fields: ['user_id', 'resource_id'] }],
+      indexes: [{ unique: true, fields: ['user_id', 'resource_id'] }, { fields: ['folder_id'] }],
     }
   );
 

@@ -1,6 +1,19 @@
 <script setup>
-import { computed } from 'vue'
-import { ElButton, ElCard, ElCol, ElRow, ElSkeleton, ElTable, ElTableColumn, ElTag } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
+import {
+  ElButton,
+  ElCard,
+  ElCol,
+  ElDialog,
+  ElMessage,
+  ElOption,
+  ElRow,
+  ElSelect,
+  ElSkeleton,
+  ElTable,
+  ElTableColumn,
+  ElTag,
+} from 'element-plus'
 
 import EChart from '../components/EChart.vue'
 import { api } from '../lib/api'
@@ -74,14 +87,42 @@ const miniBarOption = computed(() => ({
   ],
 }))
 
+const folders = ref([])
+const favoriteDialog = ref(false)
+const favoritingRecId = ref(null)
+const selectedFolderId = ref(null)
+
+async function loadFolders() {
+  try {
+    const resp = await api.get('/actions/favorite-folders')
+    folders.value = resp.data?.data || []
+  } catch (e) {
+    folders.value = []
+  }
+}
+
+onMounted(loadFolders)
+
 async function doLearn(row) {
   await api.post(`/actions/recommendations/${row.recommendationId}/learn`)
   await refresh()
 }
 
-async function doFavorite(row) {
-  await api.post(`/actions/recommendations/${row.recommendationId}/favorite`)
+function openFavoriteDialog(row) {
+  favoritingRecId.value = row.recommendationId
+  selectedFolderId.value = folders.value.find((f) => f.isDefault)?.id || null
+  favoriteDialog.value = true
+}
+
+async function confirmFavorite() {
+  if (!favoritingRecId.value) return
+  await api.post(`/actions/recommendations/${favoritingRecId.value}/favorite`, {
+    folderId: selectedFolderId.value || null,
+  })
+  favoriteDialog.value = false
+  ElMessage.success('收藏成功')
   await refresh()
+  await loadFolders()
 }
 </script>
 
@@ -190,7 +231,7 @@ async function doFavorite(row) {
         <ElCard style="border-radius: 14px">
           <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px">
             <div style="font-weight: 700">推荐资源列表（卡片式表格）</div>
-            <div style="font-size: 12px; color: #64748b">学习 / 收藏</div>
+            <div style="font-size: 12px; color: #64748b">学习 / 收藏（可选择收藏夹）</div>
           </div>
           <ElSkeleton :loading="loading" animated>
             <el-scrollbar height="360px">
@@ -209,11 +250,11 @@ async function doFavorite(row) {
                     <ElTag type="success" effect="plain">{{ Number(row.matchScore).toFixed(3) }}</ElTag>
                   </template>
                 </ElTableColumn>
-                <ElTableColumn label="操作" width="150" fixed="right">
+                <ElTableColumn label="操作" width="170" fixed="right">
                   <template #default="{ row }">
                     <div style="display: flex; gap: 8px">
                       <ElButton size="small" type="primary" @click="doLearn(row)">学习</ElButton>
-                      <ElButton size="small" @click="doFavorite(row)">收藏</ElButton>
+                      <ElButton size="small" @click="openFavoriteDialog(row)">收藏</ElButton>
                     </div>
                   </template>
                 </ElTableColumn>
@@ -243,5 +284,18 @@ async function doFavorite(row) {
         </ElCard>
       </ElCol>
     </ElRow>
+
+    <ElDialog v-model="favoriteDialog" title="收藏到收藏夹" width="420px">
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="font-size: 13px; color: #475569">选择要加入的收藏夹</div>
+        <ElSelect v-model="selectedFolderId" placeholder="选择收藏夹" style="width: 100%">
+          <ElOption v-for="f in folders" :key="f.id" :label="f.name + (f.isDefault ? '（默认）' : '')" :value="f.id" />
+        </ElSelect>
+      </div>
+      <template #footer>
+        <ElButton @click="favoriteDialog = false">取消</ElButton>
+        <ElButton type="primary" @click="confirmFavorite">确认收藏</ElButton>
+      </template>
+    </ElDialog>
   </div>
 </template>

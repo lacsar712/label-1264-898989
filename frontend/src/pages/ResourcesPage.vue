@@ -4,17 +4,25 @@ import {
   ElButton,
   ElCard,
   ElCol,
+  ElCollapse,
+  ElCollapseItem,
+  ElDialog,
   ElInput,
+  ElInputNumber,
+  ElMessage,
   ElMessageBox,
   ElOption,
   ElPagination,
+  ElPopconfirm,
   ElRow,
   ElSelect,
   ElSkeleton,
   ElTable,
   ElTableColumn,
   ElTag,
+  ElTooltip,
 } from 'element-plus'
+import { Folder, FolderAdd, Edit, Delete, Sort, SetUp } from '@element-plus/icons-vue'
 
 import EChart from '../components/EChart.vue'
 import { api } from '../lib/api'
@@ -142,6 +150,23 @@ const pagedSearchTable = computed(() => {
   return sortedSearchTable.value.slice(start, start + pageSize.value)
 })
 
+const activeCollapse = ref([])
+
+const createFolderDialog = ref(false)
+const newFolderName = ref('')
+const newFolderParentId = ref(null)
+
+const renameDialog = ref(false)
+const renamingFolderId = ref(null)
+const renamingFolderName = ref('')
+
+const moveDialog = ref(false)
+const movingRowId = ref(null)
+const moveTargetFolderId = ref(null)
+
+const favoriteFolders = computed(() => data.value?.favoriteFolders || [])
+const favoriteGroups = computed(() => data.value?.favoriteGroups || [])
+
 async function unfavorite(row) {
   await api.delete(`/actions/user-resources/${row.id}`)
   await refresh()
@@ -155,6 +180,71 @@ async function moveToQueue(row) {
 async function removeRow(row) {
   await ElMessageBox.confirm('确认删除该记录？', '删除确认', { type: 'warning' })
   await api.delete(`/actions/user-resources/${row.id}`)
+  await refresh()
+}
+
+function openCreateFolder() {
+  newFolderName.value = ''
+  newFolderParentId.value = null
+  createFolderDialog.value = true
+}
+
+async function confirmCreateFolder() {
+  if (!newFolderName.value.trim()) {
+    ElMessage.warning('请输入收藏夹名称')
+    return
+  }
+  await api.post('/actions/favorite-folders', {
+    name: newFolderName.value.trim(),
+    parentId: newFolderParentId.value || null,
+  })
+  createFolderDialog.value = false
+  ElMessage.success('创建成功')
+  await refresh()
+}
+
+function openRenameFolder(folder) {
+  renamingFolderId.value = folder.id
+  renamingFolderName.value = folder.name
+  renameDialog.value = true
+}
+
+async function confirmRenameFolder() {
+  if (!renamingFolderName.value.trim()) {
+    ElMessage.warning('请输入收藏夹名称')
+    return
+  }
+  await api.put(`/actions/favorite-folders/${renamingFolderId.value}/rename`, {
+    name: renamingFolderName.value.trim(),
+  })
+  renameDialog.value = false
+  ElMessage.success('重命名成功')
+  await refresh()
+}
+
+async function deleteFolder(folder) {
+  await ElMessageBox.confirm(
+    `确认删除收藏夹「${folder.name}」？夹内资源将移至默认收藏夹。`,
+    '删除收藏夹',
+    { type: 'warning' }
+  )
+  await api.delete(`/actions/favorite-folders/${folder.id}`)
+  ElMessage.success('删除成功，资源已迁移至默认收藏夹')
+  await refresh()
+}
+
+function openMoveDialog(row) {
+  movingRowId.value = row.id
+  moveTargetFolderId.value = row.folderId || null
+  moveDialog.value = true
+}
+
+async function confirmMoveResource() {
+  await api.post(`/actions/user-resources/${movingRowId.value}/move-to-folder`, {
+    folderId: moveTargetFolderId.value || null,
+  })
+  moveDialog.value = false
+  ElMessage.success('移动成功')
   await refresh()
 }
 </script>
@@ -289,30 +379,116 @@ async function removeRow(row) {
         </ElCard>
 
         <ElCard style="border-radius: 14px; margin-top: 16px">
-          <div style="font-weight: 700; margin-bottom: 10px">我的收藏 / 待学（操作型表格）</div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px">
+            <div style="font-weight: 700">我的收藏 / 待学（按收藏夹分组）</div>
+            <div style="display: flex; gap: 8px">
+              <ElTooltip content="新建收藏夹">
+                <ElButton size="small" type="primary" :icon="FolderAdd" @click="openCreateFolder">新建</ElButton>
+              </ElTooltip>
+            </div>
+          </div>
           <ElSkeleton :loading="loading" animated>
-            <el-scrollbar height="230px">
-              <ElTable :data="data?.favoriteTable || []" size="small" style="width: 100%">
-                <ElTableColumn prop="name" label="资源名称" min-width="160" />
-                <ElTableColumn prop="favoritedAt" label="收藏时间" min-width="150" />
-                <ElTableColumn prop="progressPercent" label="进度" width="70">
-                  <template #default="{ row }">{{ row.progressPercent }}%</template>
-                </ElTableColumn>
-                <ElTableColumn prop="status" label="状态" width="70" />
-                <ElTableColumn label="操作" width="230" fixed="right">
-                  <template #default="{ row }">
-                    <div style="display: flex; gap: 8px">
-                      <ElButton size="small" @click="unfavorite(row)">取消收藏</ElButton>
-                      <ElButton size="small" type="primary" plain @click="moveToQueue(row)">移至待学</ElButton>
-                      <ElButton size="small" type="danger" plain @click="removeRow(row)">删除</ElButton>
+            <el-scrollbar height="420px">
+              <ElCollapse v-model="activeCollapse">
+                <ElCollapseItem
+                  v-for="group in favoriteGroups"
+                  :key="group.id"
+                  :name="String(group.id)"
+                >
+                  <template #title>
+                    <div style="display: flex; align-items: center; gap: 8px; width: 100%; padding-right: 12px">
+                      <Folder style="color: #2563eb" />
+                      <span style="font-weight: 600">{{ group.name }}</span>
+                      <ElTag size="small" type="info" effect="plain">{{ group.resourceCount }} 条</ElTag>
+                      <ElTag v-if="group.isDefault" size="small" type="warning" effect="plain">默认</ElTag>
+                      <div style="margin-left: auto; display: flex; gap: 4px" @click.stop>
+                        <ElTooltip v-if="!group.isDefault" content="重命名">
+                          <ElButton link type="primary" size="small" :icon="Edit" @click.stop="openRenameFolder(group)" />
+                        </ElTooltip>
+                        <ElPopconfirm
+                          v-if="!group.isDefault"
+                          title="确认删除此收藏夹？资源将迁移至默认收藏夹"
+                          confirm-button-text="删除"
+                          cancel-button-text="取消"
+                          @confirm="deleteFolder(group)"
+                        >
+                          <template #reference>
+                            <ElTooltip content="删除">
+                              <ElButton link type="danger" size="small" :icon="Delete" @click.stop />
+                            </ElTooltip>
+                          </template>
+                        </ElPopconfirm>
+                      </div>
                     </div>
                   </template>
-                </ElTableColumn>
-              </ElTable>
+                  <ElTable v-if="group.items.length > 0" :data="group.items" size="small" style="width: 100%">
+                    <ElTableColumn prop="name" label="资源名称" min-width="140" />
+                    <ElTableColumn prop="favoritedAt" label="收藏时间" min-width="130" />
+                    <ElTableColumn prop="progressPercent" label="进度" width="60">
+                      <template #default="{ row }">{{ row.progressPercent }}%</template>
+                    </ElTableColumn>
+                    <ElTableColumn prop="status" label="状态" width="60" />
+                    <ElTableColumn label="操作" width="220" fixed="right">
+                      <template #default="{ row }">
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                          <ElButton size="small" plain @click="openMoveDialog(row)">移动</ElButton>
+                          <ElButton size="small" type="primary" plain @click="moveToQueue(row)">移至待学</ElButton>
+                          <ElButton size="small" type="danger" plain @click="removeRow(row)">删除</ElButton>
+                        </div>
+                      </template>
+                    </ElTableColumn>
+                  </ElTable>
+                  <div v-else style="text-align: center; padding: 20px 0; color: #94a3b8; font-size: 13px">
+                    暂无收藏资源
+                  </div>
+                </ElCollapseItem>
+              </ElCollapse>
             </el-scrollbar>
           </ElSkeleton>
         </ElCard>
       </ElCol>
     </ElRow>
+
+    <ElDialog v-model="createFolderDialog" title="新建收藏夹" width="420px">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <div>
+          <div style="font-size: 13px; color: #475569; margin-bottom: 6px">收藏夹名称</div>
+          <ElInput v-model="newFolderName" placeholder="如：期末复习、日常积累" maxlength="64" show-word-limit />
+        </div>
+        <div>
+          <div style="font-size: 13px; color: #475569; margin-bottom: 6px">上级收藏夹（可选）</div>
+          <ElSelect v-model="newFolderParentId" placeholder="无（根目录）" clearable style="width: 100%">
+            <ElOption
+              v-for="f in favoriteFolders.filter((x) => !x.isDefault)"
+              :key="f.id"
+              :label="f.name"
+              :value="f.id"
+            />
+          </ElSelect>
+        </div>
+      </div>
+      <template #footer>
+        <ElButton @click="createFolderDialog = false">取消</ElButton>
+        <ElButton type="primary" @click="confirmCreateFolder">创建</ElButton>
+      </template>
+    </ElDialog>
+
+    <ElDialog v-model="renameDialog" title="重命名收藏夹" width="400px">
+      <ElInput v-model="renamingFolderName" placeholder="请输入新名称" maxlength="64" show-word-limit />
+      <template #footer>
+        <ElButton @click="renameDialog = false">取消</ElButton>
+        <ElButton type="primary" @click="confirmRenameFolder">确认</ElButton>
+      </template>
+    </ElDialog>
+
+    <ElDialog v-model="moveDialog" title="移动到收藏夹" width="400px">
+      <ElSelect v-model="moveTargetFolderId" placeholder="选择目标收藏夹" style="width: 100%">
+        <ElOption v-for="f in favoriteFolders" :key="f.id" :label="f.name + (f.isDefault ? '（默认）' : '')" :value="f.id" />
+      </ElSelect>
+      <template #footer>
+        <ElButton @click="moveDialog = false">取消</ElButton>
+        <ElButton type="primary" @click="confirmMoveResource">移动</ElButton>
+      </template>
+    </ElDialog>
   </div>
 </template>

@@ -9,8 +9,95 @@ const {
   ResourceCategory,
   SystemLog,
   UserBehavior,
+  FavoriteFolder,
 } =
   require('../models');
+
+async function ensureDefaultFolder(userId) {
+  const [folder] = await FavoriteFolder.findOrCreate({
+    where: { userId, isDefault: true },
+    defaults: {
+      userId,
+      name: '默认收藏夹',
+      isDefault: true,
+      parentId: null,
+      sortOrder: 0,
+    },
+  });
+  return folder;
+}
+
+async function listFolders(req, res) {
+  const userId = req.user.id;
+  await ensureDefaultFolder(userId);
+  const folders = await FavoriteFolder.findAll({
+    where: { userId },
+    order: [['sortOrder', 'ASC'], ['id', 'ASC']],
+  });
+  const withCounts = await Promise.all(
+    folders.map(async (f) => {
+      const count = await UserResource.count({ where: { userId, folderId: f.id, status: { [require('sequelize').Op.in]: ['收藏', '待学'] } } });
+      return { ...f.toJSON(), resourceCount: count };
+    })
+  );
+  return res.json({ ok: true, data: withCounts });
+}
+
+async function createFolder(req, res) {
+  const userId = req.user.id;
+  const { name, parentId } = req.body;
+  if (parentId !== undefined && parentId !== null) {
+    const parent = await FavoriteFolder.findOne({ where: { id: parentId, userId } });
+    if (!parent) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '父收藏夹不存在' } });
+  }
+  const maxOrder = await FavoriteFolder.max('sortOrder', { where: { userId, parentId: parentId || null } });
+  const folder = await FavoriteFolder.create({
+    userId,
+    name: String(name).trim().slice(0, 64),
+    isDefault: false,
+    parentId: parentId || null,
+    sortOrder: Number.isFinite(maxOrder) ? maxOrder + 1 : 0,
+  });
+  return res.json({ ok: true, data: folder });
+}
+
+async function renameFolder(req, res) {
+  const userId = req.user.id;
+  const { folderId } = req.params;
+  const { name } = req.body;
+  const folder = await FavoriteFolder.findOne({ where: { id: folderId, userId } });
+  if (!folder) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '收藏夹不存在' } });
+  if (folder.isDefault) return res.status(400).json({ ok: false, error: { code: 'INVALID_OPERATION', message: '默认收藏夹不可重命名' } });
+  await folder.update({ name: String(name).trim().slice(0, 64) });
+  return res.json({ ok: true });
+}
+
+async function sortFolders(req, res) {
+  const userId = req.user.id;
+  const { orders } = req.body;
+  if (!Array.isArray(orders)) return res.status(400).json({ ok: false, error: { code: 'INVALID_PARAM', message: 'orders 必须是数组' } });
+  for (const item of orders) {
+    const folder = await FavoriteFolder.findOne({ where: { id: item.id, userId } });
+    if (folder) await folder.update({ sortOrder: Number(item.sortOrder) || 0, parentId: item.parentId !== undefined ? item.parentId || null : folder.parentId });
+  }
+  return res.json({ ok: true });
+}
+
+async function deleteFolder(req, res) {
+  const userId = req.user.id;
+  const { folderId } = req.params;
+  const folder = await FavoriteFolder.findOne({ where: { id: folderId, userId } });
+  if (!folder) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '收藏夹不存在' } });
+  if (folder.isDefault) return res.status(400).json({ ok: false, error: { code: 'INVALID_OPERATION', message: '默认收藏夹不可删除' } });
+  const defaultFolder = await ensureDefaultFolder(userId);
+  if (Number(defaultFolder.id) === Number(folderId)) {
+    return res.status(400).json({ ok: false, error: { code: 'INVALID_OPERATION', message: '默认收藏夹不可删除' } });
+  }
+  await UserResource.update({ folderId: defaultFolder.id }, { where: { userId, folderId: folder.id } });
+  await FavoriteFolder.update({ parentId: defaultFolder.parentId }, { where: { userId, parentId: folder.id } });
+  await folder.destroy();
+  return res.json({ ok: true });
+}
 
 async function ensureCategoryByCode(categoryId) {
   let category = await ResourceCategory.findOne({ where: { categoryCode: categoryId } });
@@ -41,16 +128,25 @@ async function ensureCategoryByCode(categoryId) {
 async function favorite(req, res) {
   const userId = req.user.id;
   const { recommendationId } = req.params;
+  const { folderId } = req.body || {};
 
   const rec = await Recommendation.findOne({ where: { id: recommendationId, userId } });
   if (!rec) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '推荐不存在' } });
 
+  const defaultFolder = await ensureDefaultFolder(userId);
+  let targetFolderId = defaultFolder.id;
+  if (folderId !== undefined && folderId !== null) {
+    const folder = await FavoriteFolder.findOne({ where: { id: folderId, userId } });
+    if (!folder) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '收藏夹不存在' } });
+    targetFolderId = folder.id;
+  }
+
   const [ur] = await UserResource.findOrCreate({
     where: { userId, resourceId: rec.resourceId },
-    defaults: { status: '收藏', progressPercent: 0, favoritedAt: new Date() },
+    defaults: { status: '收藏', progressPercent: 0, favoritedAt: new Date(), folderId: targetFolderId },
   });
 
-  await ur.update({ status: '收藏', favoritedAt: ur.favoritedAt || new Date() });
+  await ur.update({ status: '收藏', favoritedAt: ur.favoritedAt || new Date(), folderId: targetFolderId });
   await UserBehavior.create({
     userId,
     type: '收藏',
@@ -59,6 +155,20 @@ async function favorite(req, res) {
     dwellSeconds: 5,
   });
 
+  return res.json({ ok: true });
+}
+
+async function moveResourceToFolder(req, res) {
+  const userId = req.user.id;
+  const { userResourceId } = req.params;
+  const { folderId } = req.body;
+  const ur = await UserResource.findOne({ where: { id: userResourceId, userId } });
+  if (!ur) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '记录不存在' } });
+  if (folderId !== undefined && folderId !== null) {
+    const folder = await FavoriteFolder.findOne({ where: { id: folderId, userId } });
+    if (!folder) return res.status(404).json({ ok: false, error: { code: 'NOT_FOUND', message: '收藏夹不存在' } });
+  }
+  await ur.update({ folderId: folderId || null });
   return res.json({ ok: true });
 }
 
@@ -430,6 +540,12 @@ module.exports = {
   learn,
   unfavorite,
   moveToQueue,
+  moveResourceToFolder,
+  listFolders,
+  createFolder,
+  renameFolder,
+  sortFolders,
+  deleteFolder,
   adminUpdateUserStatus,
   adminTakeDownResource,
   adminUpdateUserProfile,
