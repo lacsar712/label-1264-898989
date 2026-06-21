@@ -6,6 +6,7 @@ import AppLayout from '../layout/AppLayout.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import HomePage from '../pages/HomePage.vue'
 import ResourcesPage from '../pages/ResourcesPage.vue'
+import ResourcesComparePage from '../pages/ResourcesComparePage.vue'
 import RecommendationAnalysisPage from '../pages/RecommendationAnalysisPage.vue'
 import ProgressPage from '../pages/ProgressPage.vue'
 import AbilityMapPage from '../pages/AbilityMapPage.vue'
@@ -30,6 +31,7 @@ const router = createRouter({
       children: [
         { path: 'home', component: HomePage },
         { path: 'resources', component: ResourcesPage },
+        { path: 'resources/compare', component: ResourcesComparePage },
         { path: 'recommendation-analysis', component: RecommendationAnalysisPage },
         { path: 'progress', component: ProgressPage },
         { path: 'ability-map', component: AbilityMapPage },

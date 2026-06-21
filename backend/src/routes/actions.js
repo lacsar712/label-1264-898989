@@ -200,4 +200,6 @@ router.delete('/admin/assignments/:assignmentId', auth, requireAdmin, asyncHandl
 router.post('/assignments/:assignmentId/start', auth, asyncHandler(action.studentStartAssignment));
 router.post('/assignments/:assignmentId/submit', auth, asyncHandler(action.studentSubmitAssignment));
 
+router.get('/resources/detail', auth, asyncHandler(action.getResourcesDetail));
+
 module.exports = router;

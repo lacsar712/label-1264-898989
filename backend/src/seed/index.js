@@ -138,6 +138,8 @@ async function main() {
     const subject = pick(rng, subjects);
     const type = pick(rng, types);
     const difficulty = pick(rng, difficulties);
+    const baseHours = type === '课程' ? 3 : type === '题库' ? 2 : type === '视频' ? 1.5 : 1;
+    const diffMultiplier = difficulty === '基础' ? 0.7 : difficulty === '提高' ? 1 : 1.5;
     resourceRows.push({
       code: `RES-${String(i).padStart(4, '0')}`,
       name: `${subject}${type} · ${difficulty}提升第${i}讲`,
@@ -145,6 +147,8 @@ async function main() {
       type,
       difficulty,
       heat: Math.floor(rng() * 980 + 20),
+      rating: clamp(Number((rng() * 2.5 + 2.5).toFixed(2)), 2.5, 5),
+      estimatedHours: clamp(Number((baseHours * diffMultiplier * (0.8 + rng() * 0.4)).toFixed(1)), 0.5, 12),
       status: pick(rng, statuses),
       deleted: false,
       uploadedAt: daysAgo(Math.floor(rng() * 40)),

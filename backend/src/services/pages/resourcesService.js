@@ -61,13 +61,27 @@ async function getResourcesData(userId) {
   const resourceCategoryStacked = Object.values(categoryMap);
 
   const searchTable = resources.slice(0, 20).map((r) => ({
+    id: r.id,
     resourceId: r.code,
     name: r.name,
     subject: r.subject,
+    type: r.type,
     difficulty: r.difficulty,
     heat: r.heat,
+    rating: Number(r.rating),
+    estimatedHours: Number(r.estimatedHours),
     updatedAt: r.updatedAt,
   }));
+
+  const resourceTagMap = tags.reduce((acc, t) => {
+    acc[t.resourceId] = acc[t.resourceId] || [];
+    acc[t.resourceId].push(t.name);
+    return acc;
+  }, {});
+
+  searchTable.forEach((r) => {
+    r.tags = resourceTagMap[r.id] || [];
+  });
 
   const tagCount = tags.reduce((acc, t) => {
     acc[t.name] = acc[t.name] || { name: t.name, count: 0, weightSum: 0 };
@@ -194,4 +208,48 @@ async function getResourcesData(userId) {
   };
 }
 
-module.exports = { getResourcesData };
+async function getResourcesByCodes(codes) {
+  if (!codes || codes.length === 0) return [];
+  if (codes.length > 4) codes = codes.slice(0, 4);
+
+  const resources = await Resource.findAll({
+    where: { code: codes, deleted: false, status: '上架' },
+    order: [['updatedAt', 'DESC']],
+  });
+
+  const resourceIds = resources.map((r) => r.id);
+  const tags = await ResourceTag.findAll({
+    where: { resourceId: resourceIds },
+  });
+
+  const resourceTagMap = tags.reduce((acc, t) => {
+    acc[t.resourceId] = acc[t.resourceId] || [];
+    acc[t.resourceId].push(t.name);
+    return acc;
+  }, {});
+
+  const codeOrderMap = codes.reduce((acc, code, idx) => {
+    acc[code] = idx;
+    return acc;
+  }, {});
+
+  const result = resources
+    .map((r) => ({
+      id: r.id,
+      resourceId: r.code,
+      name: r.name,
+      subject: r.subject,
+      type: r.type,
+      difficulty: r.difficulty,
+      heat: r.heat,
+      rating: Number(r.rating),
+      estimatedHours: Number(r.estimatedHours),
+      tags: resourceTagMap[r.id] || [],
+      updatedAt: r.updatedAt,
+    }))
+    .sort((a, b) => codeOrderMap[a.resourceId] - codeOrderMap[b.resourceId]);
+
+  return result;
+}
+
+module.exports = { getResourcesData, getResourcesByCodes };

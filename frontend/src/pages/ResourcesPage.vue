@@ -21,12 +21,17 @@ import {
   ElTableColumn,
   ElTag,
   ElTooltip,
+  ElCheckbox,
 } from 'element-plus'
-import { Folder, FolderAdd, Edit, Delete, Sort, SetUp } from '@element-plus/icons-vue'
+import { Folder, FolderAdd, Edit, Delete, Sort, SetUp, Scale } from '@element-plus/icons-vue'
 
 import EChart from '../components/EChart.vue'
+import CompareBasket from '../components/CompareBasket.vue'
 import { api } from '../lib/api'
 import { usePageData } from '../lib/usePageData'
+import { useCompare } from '../stores/compare'
+
+const { toggleCompare, isSelected, isFull, MAX_COMPARE } = useCompare()
 
 const { data, loading, refresh } = usePageData('/pages/resources')
 
@@ -277,7 +282,15 @@ async function confirmMoveResource() {
       <ElCol :xs="24" :lg="10">
         <ElCard style="border-radius: 14px; height: 100%">
           <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px">
-            <div style="font-weight: 700">筛选结果表</div>
+            <div style="font-weight: 700; display: flex; align-items: center; gap: 8px">
+              筛选结果表
+              <ElTooltip :content="isFull ? '对比篮已满' : '勾选资源加入对比篮，最多4个'">
+                <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b; font-weight: normal">
+                  <Scale style="width: 14px; height: 14px" />
+                  对比
+                </span>
+              </ElTooltip>
+            </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end">
               <ElInput v-model="keyword" placeholder="搜索资源ID/名称" style="width: 160px" />
               <ElSelect v-model="subject" placeholder="学科" clearable style="width: 110px">
@@ -306,14 +319,54 @@ async function confirmMoveResource() {
             </div>
           </div>
           <ElSkeleton :loading="loading" animated>
-            <el-scrollbar height="280px">
+            <el-scrollbar height="320px">
               <ElTable :data="pagedSearchTable" size="small" style="width: 100%">
+                <ElTableColumn width="50" align="center">
+                  <template #header>
+                    <span style="font-size: 12px; color: #64748b">选</span>
+                  </template>
+                  <template #default="{ row }">
+                    <ElCheckbox
+                      :model-value="isSelected(row.resourceId)"
+                      :disabled="!isSelected(row.resourceId) && isFull"
+                      @change="toggleCompare(row)"
+                    />
+                  </template>
+                </ElTableColumn>
                 <ElTableColumn prop="resourceId" label="资源ID" width="110" />
-                <ElTableColumn prop="name" label="名称" min-width="180" />
-                <ElTableColumn prop="subject" label="学科" width="70" />
-                <ElTableColumn prop="difficulty" label="难度" width="70" />
-                <ElTableColumn prop="heat" label="热度" width="70" />
-                <ElTableColumn prop="updatedAt" label="更新时间" min-width="150" />
+                <ElTableColumn prop="name" label="名称" min-width="160" show-overflow-tooltip />
+                <ElTableColumn prop="subject" label="学科" width="60" />
+                <ElTableColumn prop="type" label="类型" width="60" />
+                <ElTableColumn prop="difficulty" label="难度" width="60" />
+                <ElTableColumn prop="heat" label="热度" width="60" />
+                <ElTableColumn prop="rating" label="评分" width="70">
+                  <template #default="{ row }">
+                    <span :style="{ color: row.rating >= 4 ? '#10b981' : row.rating >= 3 ? '#f59e0b' : '#ef4444', fontWeight: 600 }">
+                      {{ Number(row.rating).toFixed(1) }}
+                    </span>
+                  </template>
+                </ElTableColumn>
+                <ElTableColumn prop="estimatedHours" label="学时" width="60">
+                  <template #default="{ row }">
+                    {{ Number(row.estimatedHours).toFixed(1) }}h
+                  </template>
+                </ElTableColumn>
+                <ElTableColumn prop="tags" label="标签" min-width="120">
+                  <template #default="{ row }">
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap">
+                      <ElTag
+                        v-for="tag in (row.tags || []).slice(0, 2)"
+                        :key="tag"
+                        size="small"
+                        type="info"
+                        effect="plain"
+                      >
+                        {{ tag }}
+                      </ElTag>
+                    </div>
+                  </template>
+                </ElTableColumn>
+                <ElTableColumn prop="updatedAt" label="更新时间" width="150" />
               </ElTable>
             </el-scrollbar>
             <div style="display: flex; justify-content: flex-end; padding-top: 8px">
@@ -490,5 +543,7 @@ async function confirmMoveResource() {
         <ElButton type="primary" @click="confirmMoveResource">移动</ElButton>
       </template>
     </ElDialog>
+
+    <CompareBasket />
   </div>
 </template>

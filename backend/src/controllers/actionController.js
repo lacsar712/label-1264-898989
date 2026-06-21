@@ -15,6 +15,8 @@ const {
 } =
   require('../models');
 
+const { getResourcesByCodes } = require('../services/pages/resourcesService');
+
 async function ensureDefaultFolder(userId) {
   const [folder] = await FavoriteFolder.findOrCreate({
     where: { userId, isDefault: true },
@@ -625,6 +627,18 @@ async function studentSubmitAssignment(req, res) {
   return res.json({ ok: true });
 }
 
+async function getResourcesDetail(req, res) {
+  const codes = req.query.codes ? String(req.query.codes).split(',').filter(Boolean) : [];
+  if (codes.length === 0) {
+    return res.status(400).json({ ok: false, error: { code: 'INVALID_PARAM', message: '请指定资源编码' } });
+  }
+  if (codes.length > 4) {
+    return res.status(400).json({ ok: false, error: { code: 'INVALID_PARAM', message: '最多对比4个资源' } });
+  }
+  const data = await getResourcesByCodes(codes);
+  return res.json({ ok: true, data });
+}
+
 module.exports = {
   favorite,
   learn,
@@ -655,4 +669,5 @@ module.exports = {
   adminDeleteAssignment,
   studentStartAssignment,
   studentSubmitAssignment,
+  getResourcesDetail,
 };
