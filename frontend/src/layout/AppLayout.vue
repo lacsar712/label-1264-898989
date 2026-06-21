@@ -14,6 +14,7 @@ import {
   Compass,
   Document,
   Reading,
+  Edit,
 } from '@element-plus/icons-vue'
 
 import ErrorBoundary from '../components/ErrorBoundary.vue'
@@ -97,6 +98,10 @@ onMounted(loadTodayDueCount)
             >
               {{ todayDueCount }}
             </span>
+          </el-menu-item>
+          <el-menu-item index="/diary">
+            <el-icon><Edit /></el-icon>
+            <span>学习日记</span>
           </el-menu-item>
           <el-menu-item index="/my-reports">
             <el-icon><Files /></el-icon>

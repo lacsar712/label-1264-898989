@@ -19,6 +19,7 @@ import AdminAssignmentsPage from '../pages/admin/AdminAssignmentsPage.vue'
 import AdminReportsPage from '../pages/admin/AdminReportsPage.vue'
 import StudentReportsPage from '../pages/StudentReportsPage.vue'
 import ReportPreviewPage from '../pages/ReportPreviewPage.vue'
+import DiaryPage from '../pages/DiaryPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -37,6 +38,7 @@ const router = createRouter({
         { path: 'ability-map', component: AbilityMapPage },
         { path: 'assignments', component: AssignmentPage },
         { path: 'flashcards', component: FlashcardReviewPage },
+        { path: 'diary', component: DiaryPage },
         { path: 'my-reports', component: StudentReportsPage },
         { path: 'admin/users', component: AdminUsersPage },
         { path: 'admin/resources', component: AdminResourcesPage },
