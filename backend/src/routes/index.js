@@ -5,6 +5,7 @@ const pageRoutes = require('./pages');
 const actionRoutes = require('./actions');
 const focusRoutes = require('./focus');
 const flashcardRoutes = require('./flashcard');
+const reportRoutes = require('./reports');
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use('/pages', pageRoutes);
 router.use('/actions', actionRoutes);
 router.use('/focus', focusRoutes);
 router.use('/flashcards', flashcardRoutes);
+router.use('/reports', reportRoutes);
 
 module.exports = router;

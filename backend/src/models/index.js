@@ -24,6 +24,7 @@ const Assignment = require('./assignment')(sequelize, DataTypes);
 const AssignmentSubmission = require('./assignmentSubmission')(sequelize, DataTypes);
 const Flashcard = require('./flashcard')(sequelize, DataTypes);
 const FlashcardReview = require('./flashcardReview')(sequelize, DataTypes);
+const LearningReport = require('./learningReport')(sequelize, DataTypes);
 
 User.hasMany(UserTag, { foreignKey: 'userId', as: 'tags' });
 UserTag.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -104,6 +105,10 @@ FlashcardReview.belongsTo(Flashcard, { foreignKey: 'flashcardId', as: 'flashcard
 User.hasMany(FlashcardReview, { foreignKey: 'userId', as: 'flashcardReviews' });
 FlashcardReview.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+User.hasMany(LearningReport, { foreignKey: 'userId', as: 'learningReports' });
+LearningReport.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+LearningReport.belongsTo(User, { foreignKey: 'generatedBy', as: 'generator' });
+
 module.exports = {
   sequelize,
   User,
@@ -128,4 +133,5 @@ module.exports = {
   AssignmentSubmission,
   Flashcard,
   FlashcardReview,
+  LearningReport,
 };

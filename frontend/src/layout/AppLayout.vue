@@ -98,6 +98,10 @@ onMounted(loadTodayDueCount)
               {{ todayDueCount }}
             </span>
           </el-menu-item>
+          <el-menu-item index="/my-reports">
+            <el-icon><Files /></el-icon>
+            <span>学情报告</span>
+          </el-menu-item>
 
           <el-sub-menu v-if="isAdmin" index="/admin">
             <template #title>
@@ -119,6 +123,10 @@ onMounted(loadTodayDueCount)
             <el-menu-item index="/admin/assignments">
               <el-icon><Document /></el-icon>
               <span>作业管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/reports">
+              <el-icon><Files /></el-icon>
+              <span>报告管理</span>
             </el-menu-item>
           </el-sub-menu>
         </el-menu>

@@ -15,6 +15,9 @@ import AdminSystemPage from '../pages/admin/AdminSystemPage.vue'
 import AssignmentPage from '../pages/AssignmentPage.vue'
 import FlashcardReviewPage from '../pages/FlashcardReviewPage.vue'
 import AdminAssignmentsPage from '../pages/admin/AdminAssignmentsPage.vue'
+import AdminReportsPage from '../pages/admin/AdminReportsPage.vue'
+import StudentReportsPage from '../pages/StudentReportsPage.vue'
+import ReportPreviewPage from '../pages/ReportPreviewPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,12 +35,15 @@ const router = createRouter({
         { path: 'ability-map', component: AbilityMapPage },
         { path: 'assignments', component: AssignmentPage },
         { path: 'flashcards', component: FlashcardReviewPage },
+        { path: 'my-reports', component: StudentReportsPage },
         { path: 'admin/users', component: AdminUsersPage },
         { path: 'admin/resources', component: AdminResourcesPage },
         { path: 'admin/system', component: AdminSystemPage },
         { path: 'admin/assignments', component: AdminAssignmentsPage },
+        { path: 'admin/reports', component: AdminReportsPage },
       ],
     },
+    { path: '/report-preview/:reportId', component: ReportPreviewPage },
     { path: '/:pathMatch(.*)*', redirect: '/home' },
   ],
 })
