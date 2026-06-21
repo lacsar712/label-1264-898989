@@ -10,6 +10,7 @@ router.get('/home', auth, asyncHandler(page.home));
 router.get('/resources', auth, asyncHandler(page.resources));
 router.get('/recommendation-analysis', auth, asyncHandler(page.recommendationAnalysis));
 router.get('/progress', auth, asyncHandler(page.progress));
+router.get('/ability-map', auth, asyncHandler(page.abilityMap));
 
 router.get('/admin/users', auth, requireAdmin, asyncHandler(page.userAdmin));
 router.get('/admin/resources', auth, requireAdmin, asyncHandler(page.resourceAdmin));

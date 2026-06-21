@@ -8,6 +8,7 @@ import HomePage from '../pages/HomePage.vue'
 import ResourcesPage from '../pages/ResourcesPage.vue'
 import RecommendationAnalysisPage from '../pages/RecommendationAnalysisPage.vue'
 import ProgressPage from '../pages/ProgressPage.vue'
+import AbilityMapPage from '../pages/AbilityMapPage.vue'
 import AdminUsersPage from '../pages/admin/AdminUsersPage.vue'
 import AdminResourcesPage from '../pages/admin/AdminResourcesPage.vue'
 import AdminSystemPage from '../pages/admin/AdminSystemPage.vue'
@@ -25,6 +26,7 @@ const router = createRouter({
         { path: 'resources', component: ResourcesPage },
         { path: 'recommendation-analysis', component: RecommendationAnalysisPage },
         { path: 'progress', component: ProgressPage },
+        { path: 'ability-map', component: AbilityMapPage },
         { path: 'admin/users', component: AdminUsersPage },
         { path: 'admin/resources', component: AdminResourcesPage },
         { path: 'admin/system', component: AdminSystemPage },

@@ -2,6 +2,7 @@ const { getHomeData } = require('../services/pages/homeService');
 const { getResourcesData } = require('../services/pages/resourcesService');
 const { getRecommendationAnalysisData } = require('../services/pages/recommendationAnalysisService');
 const { getProgressData } = require('../services/pages/progressService');
+const { getAbilityMapData } = require('../services/pages/abilityMapService');
 const { getAdminUsersData } = require('../services/pages/adminUsersService');
 const { getAdminResourcesData } = require('../services/pages/adminResourcesService');
 const { getAdminSystemData } = require('../services/pages/adminSystemService');
@@ -22,6 +23,10 @@ async function progress(req, res) {
   res.json({ ok: true, data: await getProgressData(req.user.id) });
 }
 
+async function abilityMap(req, res) {
+  res.json({ ok: true, data: await getAbilityMapData(req.user.id) });
+}
+
 async function userAdmin(req, res) {
   res.json({ ok: true, data: await getAdminUsersData() });
 }
@@ -34,4 +39,4 @@ async function systemConfig(req, res) {
   res.json({ ok: true, data: await getAdminSystemData() });
 }
 
-module.exports = { home, resources, recommendationAnalysis, progress, userAdmin, resourceAdmin, systemConfig };
+module.exports = { home, resources, recommendationAnalysis, progress, abilityMap, userAdmin, resourceAdmin, systemConfig };

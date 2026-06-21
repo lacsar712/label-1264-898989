@@ -11,6 +11,7 @@ import {
   TrendCharts,
   School,
   SwitchButton,
+  Compass,
 } from '@element-plus/icons-vue'
 
 import ErrorBoundary from '../components/ErrorBoundary.vue'
@@ -53,6 +54,10 @@ function logout() {
           <el-menu-item index="/progress">
             <el-icon><TrendCharts /></el-icon>
             <span>学习进度</span>
+          </el-menu-item>
+          <el-menu-item index="/ability-map">
+            <el-icon><Compass /></el-icon>
+            <span>能力图谱</span>
           </el-menu-item>
 
           <el-sub-menu v-if="isAdmin" index="/admin">
