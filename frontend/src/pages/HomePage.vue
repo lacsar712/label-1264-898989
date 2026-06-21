@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   ElButton,
   ElCard,
@@ -17,10 +17,29 @@ import {
 
 import EChart from '../components/EChart.vue'
 import PomodoroTimer from '../components/PomodoroTimer.vue'
+import BadgeSummary from '../components/BadgeSummary.vue'
 import { api } from '../lib/api'
 import { usePageData } from '../lib/usePageData'
+import { useBadges } from '../stores/badges'
+import { useRouter } from 'vue-router'
 
 const { data, loading, refresh } = usePageData('/pages/home')
+const { updateProgress, syncFromServerData } = useBadges()
+const router = useRouter()
+
+watch(
+  () => data.value?.quickStats,
+  (stats) => {
+    if (stats) {
+      syncFromServerData({
+        completedResources7d: stats.completedResources7d,
+        totalStudyMinutes7d: stats.totalStudyMinutes7d,
+        pomodoroCount7d: stats.pomodoroCount7d,
+      })
+    }
+  },
+  { immediate: true }
+)
 
 const profileDonutOption = computed(() => ({
   tooltip: { trigger: 'item' },
@@ -106,6 +125,8 @@ onMounted(loadFolders)
 
 async function doLearn(row) {
   await api.post(`/actions/recommendations/${row.recommendationId}/learn`)
+  updateProgress('study_date')
+  updateProgress('completed_resources', 1)
   await refresh()
 }
 
@@ -120,6 +141,7 @@ async function confirmFavorite() {
   await api.post(`/actions/recommendations/${favoritingRecId.value}/favorite`, {
     folderId: selectedFolderId.value || null,
   })
+  updateProgress('favorites', 1)
   favoriteDialog.value = false
   ElMessage.success('收藏成功')
   await refresh()
@@ -285,6 +307,35 @@ async function confirmFavorite() {
               </ElTable>
             </el-scrollbar>
           </ElSkeleton>
+        </ElCard>
+      </ElCol>
+    </ElRow>
+
+    <ElRow :gutter="16" style="margin-top: 16px">
+      <ElCol :xs="24" :lg="8">
+        <BadgeSummary @view-all="router.push('/badges')" />
+      </ElCol>
+      <ElCol :xs="24" :lg="16">
+        <ElCard style="border-radius: 14px; height: 100%">
+          <div style="font-weight: 700; margin-bottom: 10px">💡 学习小贴士</div>
+          <div style="padding: 12px; background: #f0f9ff; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #0ea5e9">
+            <div style="font-weight: 600; color: #0369a1; margin-bottom: 4px; font-size: 13px">连续学习，坚持打卡</div>
+            <div style="font-size: 12px; color: #64748b; line-height: 1.6">
+              每天保持学习习惯，连续打卡可解锁「坚持不懈」「持之以恒」等珍贵徽章！
+            </div>
+          </div>
+          <div style="padding: 12px; background: #fef3c7; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #f59e0b">
+            <div style="font-weight: 600; color: #92400e; margin-bottom: 4px; font-size: 13px">错题清零，精益求精</div>
+            <div style="font-size: 12px; color: #78350f; line-height: 1.6">
+              及时订正错题，不仅能巩固知识，还能获得「错题清零」「纠错达人」专属徽章。
+            </div>
+          </div>
+          <div style="padding: 12px; background: #fce7f3; border-radius: 10px; border-left: 3px solid #ec4899">
+            <div style="font-weight: 600; color: #9d174d; margin-bottom: 4px; font-size: 13px">善用收藏，温故知新</div>
+            <div style="font-size: 12px; color: #831843; line-height: 1.6">
+              把优质资源收藏起来，成为「收藏达人」甚至「收藏大师」，方便日后随时回顾。
+            </div>
+          </div>
         </ElCard>
       </ElCol>
     </ElRow>

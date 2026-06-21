@@ -5,12 +5,21 @@ import { ElButton, ElCard, ElCol, ElRow, ElSkeleton, ElTable, ElTableColumn, ElT
 import EChart from '../components/EChart.vue'
 import { usePageData } from '../lib/usePageData'
 import { api } from '../lib/api'
+import { useBadges } from '../stores/badges'
 
 const { data, loading, refresh } = usePageData('/pages/progress')
+const { updateProgress } = useBadges()
 
 async function addToFlashcard(wrongId) {
   try {
     await api.post('/flashcards/from-wrong-question', { wrongQuestionId: wrongId })
+    updateProgress('corrected_wrong', 1)
+    updateProgress('study_date')
+    const wrongTable = data.value?.wrongTable || []
+    const remainingUncorrected = wrongTable.filter((w) => !w.corrected && w.wrongId !== wrongId).length
+    if (remainingUncorrected === 0) {
+      updateProgress('wrong_zero', 1)
+    }
     ElMessage.success('已加入闪卡队列')
   } catch (e) {
     const msg = e?.response?.data?.error?.message || '加入闪卡失败'

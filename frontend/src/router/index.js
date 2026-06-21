@@ -20,6 +20,7 @@ import AdminReportsPage from '../pages/admin/AdminReportsPage.vue'
 import StudentReportsPage from '../pages/StudentReportsPage.vue'
 import ReportPreviewPage from '../pages/ReportPreviewPage.vue'
 import DiaryPage from '../pages/DiaryPage.vue'
+import BadgesPage from '../pages/BadgesPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -39,6 +40,7 @@ const router = createRouter({
         { path: 'assignments', component: AssignmentPage },
         { path: 'flashcards', component: FlashcardReviewPage },
         { path: 'diary', component: DiaryPage },
+        { path: 'badges', component: BadgesPage },
         { path: 'my-reports', component: StudentReportsPage },
         { path: 'admin/users', component: AdminUsersPage },
         { path: 'admin/resources', component: AdminResourcesPage },

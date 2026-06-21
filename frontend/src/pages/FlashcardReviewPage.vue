@@ -12,6 +12,9 @@ import {
   ElTag,
 } from 'element-plus'
 import { api } from '../lib/api'
+import { useBadges } from '../stores/badges'
+
+const { updateProgress } = useBadges()
 
 const phase = ref('list')
 const dueCards = ref([])
@@ -86,6 +89,8 @@ async function markResult(result) {
 
   try {
     await api.post(`/flashcards/${currentCard.value.id}/review`, { result })
+    updateProgress('flashcard_reviews', 1)
+    updateProgress('study_date')
     if (result === 'remembered') {
       rememberedCount.value += 1
     } else {

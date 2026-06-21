@@ -16,6 +16,9 @@ import {
   ElMessageBox,
 } from 'element-plus'
 import { api } from '../lib/api'
+import { useBadges } from '../stores/badges'
+
+const { updateProgress } = useBadges()
 
 const props = defineProps({
   resourceId: { type: Number, default: null },
@@ -191,6 +194,10 @@ async function confirmEndSession() {
       actualFocusSeconds: accumulatedSeconds.value,
     })
     ElMessage.success('专注记录已保存')
+    const focusMinutes = Math.round(accumulatedSeconds.value / 60)
+    updateProgress('pomodoro_count', 1)
+    updateProgress('study_minutes', focusMinutes)
+    updateProgress('study_date')
     emit('session-end', {
       sessionId: currentSessionId.value,
       focusSeconds: accumulatedSeconds.value,

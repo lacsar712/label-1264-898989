@@ -15,15 +15,19 @@ import {
   Document,
   Reading,
   Edit,
+  Medal,
 } from '@element-plus/icons-vue'
 
 import ErrorBoundary from '../components/ErrorBoundary.vue'
+import BadgeCelebration from '../components/BadgeCelebration.vue'
 import { useAuth } from '../stores/auth'
+import { useBadges } from '../stores/badges'
 import { api } from '../lib/api'
 
 const route = useRoute()
 const router = useRouter()
 const { state, isAdmin, clearAuth } = useAuth()
+const { state: badgesState } = useBadges()
 
 const active = computed(() => route.path)
 
@@ -103,6 +107,28 @@ onMounted(loadTodayDueCount)
             <el-icon><Edit /></el-icon>
             <span>学习日记</span>
           </el-menu-item>
+          <el-menu-item index="/badges">
+            <el-icon><Medal /></el-icon>
+            <span>成就徽章</span>
+            <span
+              v-if="badgesState.newlyUnlocked.length > 0"
+              style="
+                margin-left: 6px;
+                background: #f59e0b;
+                color: white;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 1px 6px;
+                border-radius: 10px;
+                min-width: 18px;
+                text-align: center;
+                line-height: 16px;
+                animation: pulse-badge 2s infinite;
+              "
+            >
+              {{ badgesState.newlyUnlocked.length }}
+            </span>
+          </el-menu-item>
           <el-menu-item index="/my-reports">
             <el-icon><Files /></el-icon>
             <span>学情报告</span>
@@ -169,5 +195,19 @@ onMounted(loadTodayDueCount)
         </el-main>
       </el-container>
     </el-container>
+    <BadgeCelebration />
   </div>
 </template>
+
+<style scoped>
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.85;
+  }
+}
+</style>
