@@ -1,5 +1,7 @@
 const express = require('express');
 
+const { performHealthCheck } = require('../services/healthService');
+
 const authRoutes = require('./auth');
 const pageRoutes = require('./pages');
 const actionRoutes = require('./actions');
@@ -10,8 +12,10 @@ const diaryRoutes = require('./diary');
 
 const router = express.Router();
 
-router.get('/health', (req, res) => {
-  res.json({ ok: true });
+router.get('/health', async (req, res) => {
+  const result = await performHealthCheck();
+  const statusCode = result.status === 'pass' ? 200 : 503;
+  res.status(statusCode).json(result);
 });
 
 router.use('/auth', authRoutes);
