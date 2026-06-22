@@ -33,7 +33,11 @@ async function main() {
   });
 }
 
-main().catch((err) => {
-  logger.error('server_boot_failed', { message: err?.message, stack: err?.stack });
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    logger.error('server_boot_failed', { message: err?.message, stack: err?.stack });
+    process.exit(1);
+  });
+}
+
+module.exports = app;
