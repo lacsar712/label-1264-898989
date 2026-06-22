@@ -24,7 +24,7 @@ import {
   ElTooltip,
   ElCheckbox,
 } from 'element-plus'
-import { Folder, FolderAdd, Edit, Delete, Sort, SetUp, Scale, Document } from '@element-plus/icons-vue'
+import { Folder, FolderAdd, Edit, Delete, Sort, SetUp, Document } from '@element-plus/icons-vue'
 
 import EChart from '../components/EChart.vue'
 import CompareBasket from '../components/CompareBasket.vue'
@@ -289,7 +289,7 @@ async function confirmMoveResource() {
               筛选结果表
               <ElTooltip :content="isFull ? '对比篮已满' : '勾选资源加入对比篮，最多4个'">
                 <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b; font-weight: normal">
-                  <Scale style="width: 14px; height: 14px" />
+                  <Sort style="width: 14px; height: 14px" />
                   对比
                 </span>
               </ElTooltip>

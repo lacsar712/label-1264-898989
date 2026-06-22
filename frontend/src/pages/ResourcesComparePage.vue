@@ -13,7 +13,7 @@ import {
   ElSkeleton,
   ElRate,
 } from 'element-plus'
-import { ArrowLeft, Share2, Trash, Scale } from '@element-plus/icons-vue'
+import { ArrowLeft, Share, Delete, Sort } from '@element-plus/icons-vue'
 import { api } from '../lib/api'
 import { useCompare } from '../stores/compare'
 
@@ -172,7 +172,7 @@ onMounted(() => {
             返回资源库
           </ElButton>
           <div style="display: flex; align-items: center; gap: 8px">
-            <Scale style="width: 20px; height: 20px; color: #2563eb" />
+            <Sort style="width: 20px; height: 20px; color: #2563eb" />
             <span style="font-weight: 700; font-size: 16px">资源对比</span>
             <ElTag size="small" type="info">
               {{ resources.length }} 个资源
@@ -181,12 +181,12 @@ onMounted(() => {
         </div>
         <div style="display: flex; gap: 8px">
           <ElTooltip content="复制分享链接">
-            <ElButton :icon="Share2" @click="copyShareLink">
+            <ElButton :icon="Share" @click="copyShareLink">
               分享
             </ElButton>
           </ElTooltip>
           <ElTooltip content="清空对比">
-            <ElButton :icon="Trash" type="danger" plain @click="handleClear" />
+            <ElButton :icon="Delete" type="danger" plain @click="handleClear" />
           </ElTooltip>
         </div>
       </div>

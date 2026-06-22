@@ -1,7 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { ElButton, ElTag, ElTooltip, ElMessage } from 'element-plus'
-import { Scale, Delete } from '@element-plus/icons-vue'
+import { Sort, Delete } from '@element-plus/icons-vue'
 import { useCompare } from '../stores/compare'
 
 const router = useRouter()
@@ -38,7 +38,7 @@ function goToCompare() {
       "
     >
       <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0">
-        <Scale style="width: 20px; height: 20px; color: #2563eb" />
+        <Sort style="width: 20px; height: 20px; color: #2563eb" />
         <span style="font-weight: 600; font-size: 14px">
           对比篮
           <ElTag

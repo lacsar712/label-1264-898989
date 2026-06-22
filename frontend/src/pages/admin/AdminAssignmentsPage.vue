@@ -19,9 +19,9 @@ import {
   ElTag,
 } from 'element-plus'
 
-import EChart from '../components/EChart.vue'
-import { api } from '../lib/api'
-import { usePageData } from '../lib/usePageData'
+import EChart from '../../components/EChart.vue'
+import { api } from '../../lib/api'
+import { usePageData } from '../../lib/usePageData'
 
 const { data, loading, refresh } = usePageData('/pages/admin/assignments')
 
