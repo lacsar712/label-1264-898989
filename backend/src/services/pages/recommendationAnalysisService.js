@@ -1,32 +1,17 @@
 const { Op } = require('sequelize');
 
 const { LearningDaily, WrongQuestion, RecommendationRule, RecommendationBatch } = require('../../models');
-
-function toDateOnly(d) {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const day = String(dt.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function safeNumber(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function listRecentDates(days) {
-  const out = [];
-  for (let i = days - 1; i >= 0; i -= 1) out.push(toDateOnly(daysAgo(i)));
-  return out;
-}
+const {
+  toDateOnly,
+  daysAgo,
+  safeNumber,
+  listRecentDates,
+  initDateBuckets,
+  fillBuckets,
+  buildSeries,
+  sumField,
+  avgField,
+} = require('../../utils/chartDataHelper');
 
 async function getRecommendationAnalysisData(userId) {
   const wrong = await WrongQuestion.findAll({ where: { userId } });
@@ -38,10 +23,10 @@ async function getRecommendationAnalysisData(userId) {
   const masteryTotal = wrong.length || 1;
   const knowledgeScore = Math.round((masteryHigh / masteryTotal) * 100);
 
-  const avgMinutes = daily30.length ? daily30.reduce((s, d) => s + d.studyMinutes, 0) / daily30.length : 0;
+  const avgMinutes = daily30.length ? sumField(daily30, 'studyMinutes') / daily30.length : 0;
   const timeScore = Math.min(100, Math.round((avgMinutes / 120) * 100));
 
-  const avgCompleted = daily30.length ? daily30.reduce((s, d) => s + d.completedCount, 0) / daily30.length : 0;
+  const avgCompleted = daily30.length ? sumField(daily30, 'completedCount') / daily30.length : 0;
   const speedScore = Math.min(100, Math.round((avgCompleted / 6) * 100));
 
   const radar = [

@@ -1,36 +1,11 @@
 const { Op } = require('sequelize');
 
 const { Resource, ResourceTag, UserResource, FavoriteFolder } = require('../../models');
+const { safeNumber, listRecentDates } = require('../../utils/chartDataHelper');
 
 const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物'];
 const RESOURCE_TYPES = ['课程', '课件', '题库', '视频'];
 const DEFAULT_CLOUD_TAGS = ['代数', '几何', '阅读理解', '写作', '语法', '力学', '电学', '函数'];
-
-function toDateOnly(d) {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const day = String(dt.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function safeNumber(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function listRecentDates(days) {
-  const out = [];
-  for (let i = days - 1; i >= 0; i -= 1) out.push(toDateOnly(daysAgo(i)));
-  return out;
-}
 
 async function ensureDefaultFolder(userId) {
   const [folder] = await FavoriteFolder.findOrCreate({

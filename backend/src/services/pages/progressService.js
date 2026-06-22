@@ -1,35 +1,18 @@
 const { Op } = require('sequelize');
 
 const { LearningDaily, WrongQuestion, LearningGoal, FocusSession } = require('../../models');
+const {
+  toDateOnly,
+  daysAgo,
+  safeNumber,
+  listRecentDates,
+  aggregateDateSeries,
+  sumField,
+  avgField,
+} = require('../../utils/chartDataHelper');
 
 const SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物'];
 const GOAL_TYPES = ['日', '周', '月'];
-
-function toDateOnly(d) {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, '0');
-  const day = String(dt.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function safeNumber(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function listRecentDates(days) {
-  const out = [];
-  for (let i = days - 1; i >= 0; i -= 1) out.push(toDateOnly(daysAgo(i)));
-  return out;
-}
 
 function defaultGoalByType(type) {
   if (type === '日') {
@@ -108,16 +91,16 @@ async function getProgressData(userId) {
     };
   });
 
-  const dateRange30 = listRecentDates(30);
-  const trendByDate = dateRange30.reduce((acc, date) => {
-    acc[date] = { date, actualMinutes: 0, targetMinutes: 90 };
-    return acc;
-  }, {});
-  for (const d of daily) {
-    if (!trendByDate[d.date]) continue;
-    trendByDate[d.date].actualMinutes += safeNumber(d.studyMinutes);
-  }
-  const progressTrend30d = dateRange30.map((date) => trendByDate[date]);
+  const progressTrend30d = aggregateDateSeries({
+    records: daily,
+    days: 30,
+    getDateKey: (rec) => rec.date,
+    bucketFactory: (date) => ({ date, actualMinutes: 0, targetMinutes: 90 }),
+    reducer: (bucket, rec) => {
+      bucket.actualMinutes += safeNumber(rec.studyMinutes);
+    },
+    finalize: (date, bucket) => bucket,
+  });
 
   const dailyTable = daily.slice(0, 30).map((d) => ({
     date: d.date,
@@ -182,24 +165,20 @@ async function getProgressData(userId) {
     order: [['startedAt', 'DESC']],
   });
 
-  const weekDates = [];
-  for (let i = 6; i >= 0; i -= 1) weekDates.push(toDateOnly(daysAgo(i)));
+  const pomodoroWeekDaily = aggregateDateSeries({
+    records: focusSessionsWeek,
+    days: 7,
+    getDateKey: (rec) => toDateOnly(rec.startedAt),
+    bucketFactory: (date) => ({ date, count: 0, focusMinutes: 0 }),
+    reducer: (bucket, rec) => {
+      bucket.count += 1;
+      bucket.focusMinutes += Math.round(safeNumber(rec.actualFocusSeconds) / 60);
+    },
+    finalize: (date, bucket) => bucket,
+  });
 
-  const pomodoroWeekMap = weekDates.reduce((acc, date) => {
-    acc[date] = { date, count: 0, focusMinutes: 0 };
-    return acc;
-  }, {});
-
-  for (const s of focusSessionsWeek) {
-    const date = toDateOnly(s.startedAt);
-    if (!pomodoroWeekMap[date]) continue;
-    pomodoroWeekMap[date].count += 1;
-    pomodoroWeekMap[date].focusMinutes += Math.round(safeNumber(s.actualFocusSeconds) / 60);
-  }
-
-  const pomodoroWeekDaily = weekDates.map((date) => pomodoroWeekMap[date]);
-  const weekPomodoroCount = pomodoroWeekDaily.reduce((sum, d) => sum + d.count, 0);
-  const weekFocusMinutes = pomodoroWeekDaily.reduce((sum, d) => sum + d.focusMinutes, 0);
+  const weekPomodoroCount = sumField(pomodoroWeekDaily, 'count');
+  const weekFocusMinutes = sumField(pomodoroWeekDaily, 'focusMinutes');
 
   const recentPomodoroList = focusSessionsWeek.slice(0, 10).map((s) => ({
     id: s.id,
